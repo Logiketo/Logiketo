@@ -1,5 +1,5 @@
 import express from 'express'
-import { PrismaClient, OrderStatus, VehicleStatus } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { authenticate } from '../middleware/auth'
 import { z } from 'zod'
 
@@ -14,7 +14,7 @@ const assignOrderSchema = z.object({
 })
 
 const updateDispatchStatusSchema = z.object({
-  status: z.nativeEnum(OrderStatus),
+  status: z.enum(['PENDING', 'ASSIGNED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED', 'RETURNED']),
   notes: z.string().optional(),
   location: z.object({
     latitude: z.number(),

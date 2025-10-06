@@ -1,5 +1,5 @@
 import express from 'express'
-import { PrismaClient, EmployeeStatus } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { authenticate } from '../middleware/auth'
 import { z } from 'zod'
 

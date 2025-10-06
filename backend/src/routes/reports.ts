@@ -94,13 +94,13 @@ router.get('/loads', authenticate, async (req: AuthRequest, res) => {
 
     // Calculate totals
     const totalQuantity = loadsData.length
-    const totalLoadPay = loadsData.reduce((sum, order) => sum + (order.loadPay || 0), 0)
-    const totalDriverPay = loadsData.reduce((sum, order) => sum + (order.driverPay || 0), 0)
-    const totalMiles = loadsData.reduce((sum, order) => sum + (order.miles || 0), 0)
-    const totalWeight = loadsData.reduce((sum, order) => sum + (order.weight || 0), 0)
+    const totalLoadPay = loadsData.reduce((sum: number, order: any) => sum + (order.loadPay || 0), 0)
+    const totalDriverPay = loadsData.reduce((sum: number, order: any) => sum + (order.driverPay || 0), 0)
+    const totalMiles = loadsData.reduce((sum: number, order: any) => sum + (order.miles || 0), 0)
+    const totalWeight = loadsData.reduce((sum: number, order: any) => sum + (order.weight || 0), 0)
 
     // Status breakdown
-    const statusBreakdown = loadsData.reduce((acc, order) => {
+    const statusBreakdown = loadsData.reduce((acc: any, order: any) => {
       acc[order.status] = (acc[order.status] || 0) + 1
       return acc
     }, {} as Record<string, number>)
@@ -159,11 +159,11 @@ router.get('/top-customers', authenticate, async (req: AuthRequest, res) => {
     })
 
     const topCustomers = customerStats
-      .map(customer => {
+      .map((customer: any) => {
         const orders = customer.orders
-        const totalLoadPay = orders.reduce((sum, order) => sum + (order.loadPay || 0), 0)
-        const totalDriverPay = orders.reduce((sum, order) => sum + (order.driverPay || 0), 0)
-        const deliveredOrders = orders.filter(order => order.status === 'DELIVERED').length
+        const totalLoadPay = orders.reduce((sum: number, order: any) => sum + (order.loadPay || 0), 0)
+        const totalDriverPay = orders.reduce((sum: number, order: any) => sum + (order.driverPay || 0), 0)
+        const deliveredOrders = orders.filter((order: any) => order.status === 'DELIVERED').length
 
         return {
           id: customer.id,
@@ -180,7 +180,7 @@ router.get('/top-customers', authenticate, async (req: AuthRequest, res) => {
         }
       })
       .filter(customer => customer.totalOrders > 0)
-      .sort((a, b) => b.totalLoadPay - a.totalLoadPay)
+      .sort((a: any, b: any) => b.totalLoadPay - a.totalLoadPay)
       .slice(0, limit)
 
     res.json({
@@ -276,7 +276,7 @@ router.get('/top-employees', authenticate, async (req: AuthRequest, res) => {
         }
       })
       .filter(employee => employee.totalOrders > 0)
-      .sort((a, b) => b.totalLoadPay - a.totalLoadPay)
+      .sort((a: any, b: any) => b.totalLoadPay - a.totalLoadPay)
       .slice(0, limit)
 
     res.json({
