@@ -1,0 +1,220 @@
+import { ReactNode, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { 
+  Truck, 
+  Package, 
+  CheckCircle, 
+  Clock,
+  Menu,
+  X,
+  LogOut,
+  Bell
+} from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
+
+interface OrdersLayoutProps {
+  children: ReactNode
+}
+
+const ordersNavigation = [
+  { name: 'Active', href: '/orders?status=active', icon: Package },
+  { name: 'Delivered', href: '/orders?status=delivered', icon: CheckCircle },
+  { name: 'Pending', href: '/orders?status=pending', icon: Clock },
+]
+
+// Mock data - in a real app, this would come from an API
+const orderSummary = {
+  active: 50,
+  deliveredThisWeek: 250,
+  pending: 4
+}
+
+export default function OrdersLayout({ children }: OrdersLayoutProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { user, logout } = useAuth()
+  const location = useLocation()
+
+  const handleLogout = () => {
+    logout()
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile sidebar */}
+      <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
+          <div className="flex h-16 items-center justify-between px-4">
+            <Link to="/dashboard" className="flex items-center hover:bg-gray-50 transition-colors rounded-md px-2 py-1">
+              <Truck className="h-8 w-8 text-primary-600" />
+              <span className="ml-2 text-xl font-bold text-gray-900">Logiketo</span>
+            </Link>
+            <button
+              type="button"
+              className="text-gray-400 hover:text-gray-600"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+          
+          {/* Summary Stats */}
+          <div className="px-4 py-3 bg-blue-50 border-b border-gray-200">
+            <div className="text-sm text-gray-600 mb-2">Order Summary</div>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-green-600 font-medium">Active:</span>
+                <span className="font-bold">{orderSummary.active}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-blue-600 font-medium">Delivered:</span>
+                <span className="font-bold">{orderSummary.deliveredThisWeek}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-orange-600 font-medium">Pending:</span>
+                <span className="font-bold">{orderSummary.pending}</span>
+              </div>
+            </div>
+          </div>
+
+          <nav className="flex-1 space-y-1 px-2 py-4">
+            {ordersNavigation.map((item) => {
+              const isActive = location.pathname + location.search === item.href
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                    isActive
+                      ? 'bg-primary-100 text-primary-900'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <item.icon className="mr-3 h-5 w-5" />
+                  {item.name}
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
+      </div>
+
+      {/* Desktop sidebar */}
+      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col lg:z-30">
+        <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
+          <Link to="/dashboard" className="flex h-16 items-center px-4 hover:bg-gray-50 transition-colors">
+            <Truck className="h-8 w-8 text-primary-600" />
+            <span className="ml-2 text-xl font-bold text-gray-900">Logiketo</span>
+          </Link>
+          
+          {/* Summary Stats */}
+          <div className="px-4 py-3 bg-blue-50 border-b border-gray-200">
+            <div className="text-sm text-gray-600 mb-2">Order Summary</div>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-green-600 font-medium">Active:</span>
+                <span className="font-bold">{orderSummary.active}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-blue-600 font-medium">Delivered:</span>
+                <span className="font-bold">{orderSummary.deliveredThisWeek}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-orange-600 font-medium">Pending:</span>
+                <span className="font-bold">{orderSummary.pending}</span>
+              </div>
+            </div>
+          </div>
+
+          <nav className="flex-1 space-y-1 px-2 py-4">
+            {ordersNavigation.map((item) => {
+              const isActive = location.pathname + location.search === item.href
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                    isActive
+                      ? 'bg-primary-100 text-primary-900'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <item.icon className="mr-3 h-5 w-5" />
+                  {item.name}
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="lg:pl-64">
+        {/* Top navigation */}
+        <div className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+          <button
+            type="button"
+            className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+
+          <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+            {/* Main Navigation Links */}
+            <div className="flex items-center space-x-6">
+              <a href="/myfleet" className="text-gray-700 hover:text-primary-600 font-semibold transition-all duration-300 text-base px-3 py-2 rounded-lg hover:bg-gray-100">MyFleet</a>
+              <a href="/dispatch" className="text-gray-700 hover:text-primary-600 font-semibold transition-all duration-300 text-base px-3 py-2 rounded-lg hover:bg-gray-100">MyDispatch</a>
+              <a href="/orders" className="text-gray-700 hover:text-primary-600 font-semibold transition-all duration-300 text-base px-3 py-2 rounded-lg hover:bg-gray-100">Orders</a>
+              <a href="/reports" className="text-gray-700 hover:text-primary-600 font-semibold transition-all duration-300 text-base px-3 py-2 rounded-lg hover:bg-gray-100">Summary</a>
+            </div>
+            
+            <div className="flex flex-1"></div>
+            <div className="flex items-center gap-x-4 lg:gap-x-6">
+              <button
+                type="button"
+                className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500"
+              >
+                <Bell className="h-6 w-6" />
+              </button>
+
+              {/* Profile dropdown */}
+              <div className="relative">
+                <div className="flex items-center gap-x-3">
+                  <div className="flex items-center gap-x-3">
+                    <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center">
+                      <span className="text-sm font-medium text-white">
+                        {user?.firstName?.[0]}{user?.lastName?.[0]}
+                      </span>
+                    </div>
+                    <div className="hidden lg:block">
+                      <p className="text-sm font-medium text-gray-900">
+                        {user?.firstName} {user?.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500">{user?.role}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-x-2 text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span className="hidden lg:block">Logout</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Page content */}
+        <main className="py-6">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            {children}
+          </div>
+        </main>
+      </div>
+    </div>
+  )
+}

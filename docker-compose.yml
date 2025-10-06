@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: logiketo-postgres
+    environment:
+      POSTGRES_DB: logiketo_db
+      POSTGRES_USER: logiketo_user
+      POSTGRES_PASSWORD: logiketo_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - logiketo-network
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: logiketo-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - logiketo-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: logiketo-backend
+    environment:
+      DATABASE_URL: postgresql://logiketo_user:logiketo_password@postgres:5432/logiketo_db
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - logiketo-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: logiketo-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - logiketo-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  logiketo-network:
+    driver: bridge
