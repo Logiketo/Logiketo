@@ -174,7 +174,7 @@ router.get('/top-customers', authenticate, async (req: AuthRequest, res) => {
           totalLoadPay,
           totalDriverPay,
           averageLoadPay: orders.length > 0 ? totalLoadPay / orders.length : 0,
-          lastOrderDate: orders.length > 0 ? orders.sort((a, b) => 
+          lastOrderDate: orders.length > 0 ? orders.sort((a: any, b: any) => 
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )[0].createdAt : null
         }

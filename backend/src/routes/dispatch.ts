@@ -89,7 +89,7 @@ router.get('/dashboard', authenticate, async (req, res) => {
       prisma.order.findMany({
         where: { 
           status: { 
-            in: [ASSIGNED, IN_TRANSIT, DELIVERED] 
+            in: ['ASSIGNED', 'IN_TRANSIT', 'DELIVERED'] 
           } 
         },
         include: {
@@ -151,7 +151,7 @@ router.post('/assign', authenticate, async (req, res) => {
       })
     }
 
-    if (order.status !== PENDING) {
+    if (order.status !== 'PENDING') {
       return res.status(400).json({
         success: false,
         message: 'Order is not in pending status'
@@ -171,7 +171,7 @@ router.post('/assign', authenticate, async (req, res) => {
       })
     }
 
-    if (vehicle.status !== AVAILABLE) {
+    if (vehicle.status !== 'AVAILABLE') {
       return res.status(400).json({
         success: false,
         message: 'Vehicle is not available'
@@ -209,7 +209,7 @@ router.post('/assign', authenticate, async (req, res) => {
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {
-        status: ASSIGNED,
+        status: 'ASSIGNED',
         vehicleId,
         updatedAt: new Date()
       },
@@ -225,7 +225,7 @@ router.post('/assign', authenticate, async (req, res) => {
     await prisma.trackingEvent.create({
       data: {
         orderId,
-        status: ASSIGNED,
+        status: 'ASSIGNED',
         notes: `Order assigned to vehicle ${vehicle.make} ${vehicle.model} (${vehicle.licensePlate}) with driver ${driver.firstName} ${driver.lastName}`,
         location: order.pickupAddress,
         timestamp: new Date()
@@ -305,10 +305,10 @@ router.patch('/:orderId/status', authenticate, async (req, res) => {
     })
 
     // If order is delivered, mark vehicle as available
-    if (status === DELIVERED) {
+    if (status === 'DELIVERED') {
       await prisma.vehicle.update({
         where: { id: order.vehicleId! },
-        data: { status: AVAILABLE }
+        data: { status: 'AVAILABLE' }
       })
     }
 
@@ -377,14 +377,14 @@ router.get('/vehicles/available', authenticate, async (req, res) => {
   try {
     const vehicles = await prisma.vehicle.findMany({
       where: { 
-        status: AVAILABLE,
+          status: 'AVAILABLE',
         driver: { isNot: null }
       },
       include: { 
         driver: true,
         orders: {
           where: {
-            status: { in: [ASSIGNED, IN_TRANSIT] }
+            status: { in: ['ASSIGNED', 'IN_TRANSIT'] }
           }
         }
       },
