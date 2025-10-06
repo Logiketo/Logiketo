@@ -194,7 +194,7 @@ export default function Reports() {
     } else if (selectedReport === 'new-units') {
       // New items summary
       csvContent = `Item Type,Count\n`
-      if ('summary' in reportData) {
+      if ('summary' in reportData && 'totalNewUnits' in reportData.summary) {
         csvContent += `New Units,${reportData.summary.totalNewUnits}\n`
         csvContent += `New Customers,${reportData.summary.totalNewCustomers}\n`
         csvContent += `New Employees,${reportData.summary.totalNewEmployees}\n`

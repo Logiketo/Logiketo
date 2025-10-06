@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { User, Camera, Phone, Mail, MapPin, Save, Eye, EyeOff } from 'lucide-react'
-import { useTheme } from '@/contexts/ThemeContext'
 
 export default function Settings() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
