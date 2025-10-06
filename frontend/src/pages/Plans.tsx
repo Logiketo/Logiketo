@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { 
   CheckCircle, 
-  Clock, 
   Plus, 
   Edit, 
   Trash2, 
@@ -19,7 +18,6 @@ interface Todo {
 }
 
 export default function Plans() {
-  const { isDarkMode } = useTheme()
   
   // Load todos from localStorage or use default
   const [todos, setTodos] = useState<Todo[]>(() => {

@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { 
-  FileText, 
   Download, 
-  Calendar, 
   BarChart3, 
   Users, 
   UserCheck, 
@@ -11,9 +9,7 @@ import {
   Package,
   TrendingUp,
   DollarSign,
-  Clock,
   MapPin,
-  ChevronDown,
   Filter,
   RefreshCw
 } from 'lucide-react'
@@ -25,7 +21,6 @@ type ReportType = 'loads' | 'customers' | 'employees' | 'units' | 'new-units' | 
 type PeriodType = 'week' | 'month' | 'year' | '10year' | '100year' | 'custom'
 
 export default function Reports() {
-  const { isDarkMode } = useTheme()
   const [selectedReport, setSelectedReport] = useState<ReportType>('analytics')
   const [period, setPeriod] = useState<PeriodType>('week')
   const [customStartDate, setCustomStartDate] = useState('')

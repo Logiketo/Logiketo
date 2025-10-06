@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Truck, Package, Users, FileText, BarChart3, Target, UserCheck, MapPin } from 'lucide-react'
+import { Truck, Package, Users, FileText, BarChart3, MapPin } from 'lucide-react'
 
 export default function Landing() {
   return (
