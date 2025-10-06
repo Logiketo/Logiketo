@@ -242,7 +242,7 @@ router.get('/top-employees', authenticate, async (req: AuthRequest, res) => {
 
     // Group orders by employee
     const employeeOrdersMap = new Map<string, typeof orders>()
-    orders.forEach(order => {
+    orders.forEach((order: any) => {
       if (order.employeeId) {
         if (!employeeOrdersMap.has(order.employeeId)) {
           employeeOrdersMap.set(order.employeeId, [])
@@ -252,7 +252,7 @@ router.get('/top-employees', authenticate, async (req: AuthRequest, res) => {
     })
 
     const topEmployees = employees
-      .map(employee => {
+      .map((employee: any) => {
         const employeeOrders = employeeOrdersMap.get(employee.id) || []
         const totalLoadPay = employeeOrders.reduce((sum: number, order: any) => sum + (order.loadPay || 0), 0)
         const totalDriverPay = employeeOrders.reduce((sum: number, order: any) => sum + (order.driverPay || 0), 0)
@@ -349,7 +349,7 @@ router.get('/top-units', authenticate, async (req: AuthRequest, res) => {
 
     // Group orders by vehicle/unit
     const unitOrdersMap = new Map<string, typeof orders>()
-    orders.forEach(order => {
+    orders.forEach((order: any) => {
       if (order.vehicleId) {
         if (!unitOrdersMap.has(order.vehicleId)) {
           unitOrdersMap.set(order.vehicleId, [])
@@ -359,7 +359,7 @@ router.get('/top-units', authenticate, async (req: AuthRequest, res) => {
     })
 
     const topUnits = units
-      .map(unit => {
+      .map((unit: any) => {
         const unitOrders = unitOrdersMap.get(unit.vehicle.id) || []
         const totalLoadPay = unitOrders.reduce((sum: number, order: any) => sum + (order.loadPay || 0), 0)
         const totalDriverPay = unitOrders.reduce((sum: number, order: any) => sum + (order.driverPay || 0), 0)
@@ -668,7 +668,7 @@ router.get('/analytics', authenticate, async (req: AuthRequest, res) => {
           netRevenue,
           averageOrderValue: ordersInPeriod.length > 0 ? totalRevenue / ordersInPeriod.length : 0
         },
-        statusBreakdown: statusBreakdown.reduce((acc, item) => {
+        statusBreakdown: statusBreakdown.reduce((acc: any, item: any) => {
           acc[item.status] = item._count.id
           return acc
         }, {} as Record<string, number>)
