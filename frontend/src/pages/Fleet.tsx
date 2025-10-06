@@ -16,7 +16,6 @@ import {
   Clock
 } from 'lucide-react'
 import { vehicleService, Vehicle, CreateVehicleData } from '@/services/vehicleService'
-import { useTheme } from '@/contexts/ThemeContext'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
@@ -320,8 +319,7 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
         licensePlate: formData.get('licensePlate') as string,
         vin: formData.get('vin') as string || undefined,
         color: formData.get('color') as string || undefined,
-        capacity: formData.get('capacity') ? parseFloat(formData.get('capacity') as string) : undefined,
-        status: formData.get('status') as VehicleStatus
+        capacity: formData.get('capacity') ? parseFloat(formData.get('capacity') as string) : undefined
       }
 
       if (vehicle) {
@@ -885,8 +883,6 @@ export default function Fleet() {
                       return unitA - unitB
                     })
                     .map((vehicle) => {
-                    const statusInfo = statusConfig[vehicle.status]
-                    
                     return (
                       <tr key={vehicle.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
