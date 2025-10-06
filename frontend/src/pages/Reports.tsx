@@ -163,16 +163,21 @@ export default function Reports() {
     if (selectedReport === 'analytics') {
       // Analytics overview - create summary CSV
       csvContent = `Metric,Value\n`
-      csvContent += `Total Orders,${reportData.summary.totalOrders}\n`
-      csvContent += `Total Revenue,${reportData.summary.totalRevenue}\n`
-      csvContent += `Active Units,${reportData.summary.activeUnits}\n`
-      csvContent += `Total Customers,${reportData.summary.totalCustomers}\n`
+      if ('overview' in reportData) {
+        csvContent += `Total Orders,${reportData.overview.totalOrders}\n`
+        csvContent += `Total Customers,${reportData.overview.totalCustomers}\n`
+        csvContent += `Total Employees,${reportData.overview.totalEmployees}\n`
+        csvContent += `Total Vehicles,${reportData.overview.totalVehicles}\n`
+        csvContent += `Total Units,${reportData.overview.totalUnits}\n`
+      }
     } else if (selectedReport === 'loads') {
       // Loads report
       csvContent = `Date,Total Loads,Total Revenue,Average Load Value\n`
-      reportData.dailyLoads.forEach(day => {
-        csvContent += `${day.date},${day.totalLoads},${day.totalRevenue},${day.averageLoadValue}\n`
-      })
+      if ('loads' in reportData) {
+        reportData.loads.forEach((load: any) => {
+          csvContent += `${load.createdAt},${load.orderNumber},${load.loadPay || 0},${load.driverPay || 0}\n`
+        })
+      }
     } else if (selectedReport === 'customers') {
       // Top customers
       csvContent = `Customer,Total Orders,Total Revenue,Average Order Value,Last Order Date\n`
