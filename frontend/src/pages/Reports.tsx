@@ -176,21 +176,27 @@ export default function Reports() {
     } else if (selectedReport === 'customers') {
       // Top customers
       csvContent = `Customer,Total Orders,Total Revenue,Average Order Value,Last Order Date\n`
-      reportData.topCustomers.forEach(customer => {
-        csvContent += `"${customer.name}",${customer.totalOrders},${customer.totalRevenue},${customer.averageOrderValue},"${customer.lastOrderDate || 'N/A'}"\n`
-      })
+      if ('topCustomers' in reportData) {
+        reportData.topCustomers.forEach((customer: any) => {
+          csvContent += `"${customer.name}",${customer.totalOrders},${customer.totalRevenue},${customer.averageOrderValue},"${customer.lastOrderDate || 'N/A'}"\n`
+        })
+      }
     } else if (selectedReport === 'employees') {
       // Top employees
       csvContent = `Employee,Total Orders,Total Load Pay,Total Driver Pay,Delivered Orders,Last Order Date\n`
-      reportData.topEmployees.forEach(employee => {
-        csvContent += `"${employee.firstName} ${employee.lastName}",${employee.totalOrders},${employee.totalLoadPay},${employee.totalDriverPay},${employee.deliveredOrders},"${employee.lastOrderDate || 'N/A'}"\n`
-      })
+      if ('topEmployees' in reportData) {
+        reportData.topEmployees.forEach((employee: any) => {
+          csvContent += `"${employee.firstName} ${employee.lastName}",${employee.totalOrders},${employee.totalLoadPay},${employee.totalDriverPay},${employee.deliveredOrders},"${employee.lastOrderDate || 'N/A'}"\n`
+        })
+      }
     } else if (selectedReport === 'units') {
       // Top units
       csvContent = `Unit,Vehicle,Total Orders,Total Miles,Total Load Pay\n`
-      reportData.topUnits.forEach(unit => {
-        csvContent += `"${unit.name}","${unit.vehicle}",${unit.totalOrders},${unit.totalMiles},${unit.totalLoadPay}\n`
-      })
+      if ('topUnits' in reportData) {
+        reportData.topUnits.forEach((unit: any) => {
+          csvContent += `"${unit.name}","${unit.vehicle}",${unit.totalOrders},${unit.totalMiles},${unit.totalLoadPay}\n`
+        })
+      }
     } else if (selectedReport === 'new-units') {
       // New items summary
       csvContent = `Item Type,Count\n`
