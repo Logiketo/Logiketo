@@ -51,7 +51,7 @@ const generateOrderNumber = async (): Promise<string> => {
     })
     
     // Filter for simple numeric order numbers only
-    const numericOrders = allOrders.filter(order => {
+    const numericOrders = allOrders.filter((order: any) => {
       const orderNum = order.orderNumber
       return /^\d+$/.test(orderNum) // Only simple numbers like "1", "2", "3"
     })

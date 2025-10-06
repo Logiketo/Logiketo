@@ -19,7 +19,7 @@ const createEmployeeSchema = z.object({
   salary: z.number().positive().optional(),
   address: z.string().optional(),
   emergencyContact: z.string().optional(),
-  status: z.nativeEnum(EmployeeStatus).optional()
+  status: z.enum(['ACTIVE', 'INACTIVE', 'TERMINATED', 'ON_LEAVE']).optional()
 })
 
 const updateEmployeeSchema = createEmployeeSchema.partial().omit({ employeeId: true })
@@ -30,7 +30,7 @@ router.get('/', authenticate, async (req, res) => {
     const page = parseInt(req.query.page as string) || 1
     const limit = parseInt(req.query.limit as string) || 10
     const search = req.query.search as string
-    const status = req.query.status as EmployeeStatus
+    const status = req.query.status as string
     const department = req.query.department as string
 
     const skip = (page - 1) * limit
@@ -234,7 +234,7 @@ router.patch('/:id/status', authenticate, async (req, res) => {
     const { id } = req.params
     const { status } = req.body
 
-    if (!Object.values(EmployeeStatus).includes(status)) {
+    if (!['ACTIVE', 'INACTIVE', 'TERMINATED', 'ON_LEAVE'].includes(status)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid status'
