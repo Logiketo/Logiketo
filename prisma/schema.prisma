@@ -1,0 +1,217 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  role      UserRole @default(USER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  orders    Order[]
+  vehicles  Vehicle[]
+  customers Customer[]
+
+  @@map("users")
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  city        String?
+  state       String?
+  zipCode     String?
+  country     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String
+
+  // Relations
+  createdBy User    @relation(fields: [createdById], references: [id])
+  orders    Order[]
+
+  @@map("customers")
+}
+
+model Vehicle {
+  id          String      @id @default(cuid())
+  make        String
+  model       String
+  year        Int
+  licensePlate String     @unique
+  vin         String?     @unique
+  color       String?
+  capacity    Float?      // in tons or cubic meters
+  status      VehicleStatus @default(AVAILABLE)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  driverId    String?
+  
+  // New fields for enhanced vehicle information
+  unitNumber  String?     // Custom unit number
+  driverName  String?     // Driver name (for display purposes)
+  dimensions  String?     // Vehicle dimensions
+  payload     String?     // Payload information
+  registrationExpDate String? // Registration expiration date
+  insuranceExpDate String?    // Insurance expiration date
+  insuranceDocument String?   // Insurance document path/URL
+  registrationDocument String? // Registration document path/URL
+  documents Json?             // Array of document objects with name, path, uploadDate
+
+  // Relations
+  driver User?   @relation(fields: [driverId], references: [id])
+  orders Order[]
+  unit   Unit?
+
+  @@map("vehicles")
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique
+  customerId    String
+  vehicleId     String?
+  driverId      String?
+  employeeId    String?     // Employee who took the load
+  customerLoadNumber String? // Customer load#
+  pickupAddress String
+  deliveryAddress String
+  pickupDate    DateTime
+  deliveryDate  DateTime?
+  status        OrderStatus @default(PENDING)
+  priority      Priority    @default(NORMAL)
+  description   String?
+  miles         Float?      // Miles
+  pieces        Int?        // Pieces
+  weight        Float?
+  loadPay       Float?
+  driverPay      Float?
+  notes         String?
+  document      String?     // Document field
+  documents     Json?       // Array of documents for file uploads
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relations
+  customer Customer @relation(fields: [customerId], references: [id])
+  vehicle  Vehicle? @relation(fields: [vehicleId], references: [id])
+  driver   User?    @relation(fields: [driverId], references: [id])
+  trackingEvents TrackingEvent[]
+
+  @@map("orders")
+}
+
+model TrackingEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  location  String?
+  latitude  Float?
+  longitude Float?
+  timestamp DateTime @default(now())
+  notes     String?
+
+  // Relations
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("tracking_events")
+}
+
+model Employee {
+  id          String        @id @default(cuid())
+  employeeId  String        @unique
+  firstName   String
+  lastName    String
+  email       String        @unique
+  phone       String?
+  position    String
+  department  String?
+  hireDate    DateTime
+  salary      Float?
+  status      EmployeeStatus @default(ACTIVE)
+  address     String?
+  emergencyContact String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("employees")
+}
+
+model Unit {
+  id            String   @id @default(cuid())
+  vehicleId     String   @unique
+  unitNumber    String   // Unit number (editable from Fleet)
+  name          String   // Unit name (editable from Fleet)
+  dimensions    String?  // Dimensions (editable from Fleet)
+  payload       String?  // Payload (editable from Fleet)
+  notes         String?  // Notes (editable from Units)
+  availability  String?  // Availability status (editable from Units)
+  location      String?  // Current location (editable from Units)
+  zipCode       String?  // Zip code (editable from Units)
+  availableTime String?  // Available time (editable from Units)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("units")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  DISPATCHER
+  DRIVER
+  USER
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum OrderStatus {
+  PENDING
+  ASSIGNED
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  TERMINATED
+  ON_LEAVE
+}
