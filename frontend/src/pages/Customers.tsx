@@ -323,7 +323,6 @@ export default function Customers() {
   const [showForm, setShowForm] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const queryClient = useQueryClient()
 
   const { data: customersData, isLoading } = useQuery({
     queryKey: ['customers', currentPage, searchTerm],

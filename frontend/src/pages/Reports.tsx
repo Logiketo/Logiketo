@@ -13,7 +13,6 @@ import {
   Filter,
   RefreshCw
 } from 'lucide-react'
-import { useTheme } from '@/contexts/ThemeContext'
 import { reportService, ReportQuery } from '@/services/reportService'
 import { format } from 'date-fns'
 

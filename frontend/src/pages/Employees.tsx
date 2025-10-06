@@ -339,8 +339,6 @@ export default function Employees() {
   const [departmentFilter, setDepartmentFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
 
-  const queryClient = useQueryClient()
-
   const { data: employeesData, isLoading } = useQuery({
     queryKey: ['employees', currentPage, searchTerm, statusFilter, departmentFilter],
     queryFn: () => employeeService.getEmployees({

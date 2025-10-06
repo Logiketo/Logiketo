@@ -312,10 +312,22 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
         console.log(`${key}: ${value}`)
       }
 
+      // Convert FormData to CreateVehicleData
+      const vehicleData: CreateVehicleData = {
+        make: formData.get('make') as string,
+        model: formData.get('model') as string,
+        year: parseInt(formData.get('year') as string),
+        licensePlate: formData.get('licensePlate') as string,
+        vin: formData.get('vin') as string || undefined,
+        color: formData.get('color') as string || undefined,
+        capacity: formData.get('capacity') ? parseFloat(formData.get('capacity') as string) : undefined,
+        status: formData.get('status') as VehicleStatus
+      }
+
       if (vehicle) {
-        await updateMutation.mutateAsync({ id: vehicle.id, data: formData })
+        await updateMutation.mutateAsync({ id: vehicle.id, data: vehicleData })
       } else {
-        await createMutation.mutateAsync(formData)
+        await createMutation.mutateAsync(vehicleData)
       }
     } catch (error: any) {
       console.error('Form submission error:', error)
@@ -743,13 +755,11 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
 }
 
 export default function Fleet() {
-  const { isDarkMode } = useTheme()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const queryClient = useQueryClient()
 
   const { data: vehiclesData, isLoading } = useQuery({
     queryKey: ['vehicles', currentPage, searchTerm, statusFilter],
@@ -876,7 +886,6 @@ export default function Fleet() {
                     })
                     .map((vehicle) => {
                     const statusInfo = statusConfig[vehicle.status]
-                    const StatusIcon = statusInfo.icon
                     
                     return (
                       <tr key={vehicle.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">

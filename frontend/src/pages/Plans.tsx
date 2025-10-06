@@ -6,7 +6,6 @@ import {
   Trash2, 
   Calendar
 } from 'lucide-react'
-import { useTheme } from '@/contexts/ThemeContext'
 
 interface Todo {
   id: string
