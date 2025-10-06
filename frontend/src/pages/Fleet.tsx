@@ -9,11 +9,7 @@ import {
   Search, 
   Edit, 
   Trash2, 
-  Calendar,
-  Wrench,
-  CheckCircle,
-  XCircle,
-  Clock
+  Calendar
 } from 'lucide-react'
 import { vehicleService, Vehicle, CreateVehicleData } from '@/services/vehicleService'
 import toast from 'react-hot-toast'
