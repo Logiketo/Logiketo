@@ -4,7 +4,6 @@ import { useTheme } from '@/contexts/ThemeContext'
 
 export default function Settings() {
   const { isDarkMode } = useTheme()
-  const [showPassword, setShowPassword] = useState(false)
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   
@@ -14,7 +13,7 @@ export default function Settings() {
     email: 'davit.gordeladze@logiketo.com',
     phone: '+1 (555) 123-4567',
     address: '123 Main Street, New York, NY 10001',
-    profilePicture: null
+    profilePicture: null as string | null
   })
 
   const [passwordData, setPasswordData] = useState({
