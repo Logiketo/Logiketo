@@ -194,10 +194,12 @@ export default function Reports() {
     } else if (selectedReport === 'new-units') {
       // New items summary
       csvContent = `Item Type,Count\n`
-      csvContent += `New Units,${reportData.summary.totalNewUnits}\n`
-      csvContent += `New Customers,${reportData.summary.totalNewCustomers}\n`
-      csvContent += `New Employees,${reportData.summary.totalNewEmployees}\n`
-      csvContent += `New Vehicles,${reportData.summary.totalNewVehicles}\n`
+      if ('summary' in reportData) {
+        csvContent += `New Units,${reportData.summary.totalNewUnits}\n`
+        csvContent += `New Customers,${reportData.summary.totalNewCustomers}\n`
+        csvContent += `New Employees,${reportData.summary.totalNewEmployees}\n`
+        csvContent += `New Vehicles,${reportData.summary.totalNewVehicles}\n`
+      }
     }
 
     // Create and download file

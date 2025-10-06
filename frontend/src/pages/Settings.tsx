@@ -3,7 +3,6 @@ import { User, Camera, Phone, Mail, MapPin, Save, Eye, EyeOff } from 'lucide-rea
 import { useTheme } from '@/contexts/ThemeContext'
 
 export default function Settings() {
-  const { isDarkMode } = useTheme()
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   
