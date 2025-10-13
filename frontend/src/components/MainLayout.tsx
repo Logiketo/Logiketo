@@ -17,7 +17,8 @@ import {
   Clock,
   Sun,
   Moon,
-  Target
+  Target,
+  Shield
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -48,6 +49,10 @@ const ordersNavigation = [
 const summaryNavigation = [
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'To Do', href: '/plans', icon: Target },
+]
+
+const adminNavigation = [
+  { name: 'Admin Panel', href: '/admin', icon: Shield },
 ]
 
 // Function to calculate order counts by status groups
@@ -114,6 +119,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
       return ordersNavigation
     } else if (location.pathname.startsWith('/reports') || location.pathname.startsWith('/plans')) {
       return summaryNavigation
+    } else if (location.pathname.startsWith('/admin')) {
+      return adminNavigation
     }
     return []
   }
@@ -238,6 +245,19 @@ export default function MainLayout({ children }: MainLayoutProps) {
           style={{ pointerEvents: 'auto' }}
           ref={dropdownRef}
         >
+          {/* Admin Panel - Only show for admin users */}
+          {user?.role === 'ADMIN' && (
+            <div 
+              className="px-4 py-3 text-sm text-gray-700 hover:bg-red-50 cursor-pointer border-b border-gray-100"
+              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+              onClick={() => {
+                window.location.href = '/admin'
+              }}
+            >
+              <Shield className="inline mr-3 h-4 w-4" />
+              Admin Panel
+            </div>
+          )}
           <div 
             className="px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer border-b border-gray-100"
             style={{ pointerEvents: 'auto', cursor: 'pointer' }}
