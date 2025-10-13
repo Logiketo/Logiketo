@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { User, Check, X, Clock, Users, AlertCircle } from 'lucide-react'
+import { Check, X, Clock, Users, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface PendingUser {
