@@ -125,6 +125,7 @@ server.listen(PORT, () => {
   console.log(`🚀 Logiketo API server running on port ${PORT}`)
   console.log(`📊 Health check: http://localhost:${PORT}/health`)
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`)
+  console.log(`🔒 User approval system: ACTIVE`)
 })
 
 export { io }
