@@ -292,6 +292,36 @@ router.post('/logout', authenticate, (req, res) => {
 })
 
 // Admin routes for user approval
+// Get all users (admin only)
+router.get('/all-users', authenticate, async (req: AuthRequest, res) => {
+  try {
+    // Check if user is admin
+    if (req.user!.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin role required.'
+      })
+    }
+
+    const allUsers = await prisma.$queryRaw`
+      SELECT id, email, "firstName", "lastName", role, "isActive", "isApproved", "createdAt"
+      FROM users
+      ORDER BY "createdAt" DESC
+    `
+
+    return res.json({
+      success: true,
+      data: allUsers
+    })
+  } catch (error) {
+    console.error('Get all users error:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    })
+  }
+})
+
 // Get pending users (admin only)
 router.get('/pending-users', authenticate, async (req: AuthRequest, res) => {
   try {
