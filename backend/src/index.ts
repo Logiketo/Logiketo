@@ -135,6 +135,7 @@ server.listen(PORT, () => {
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`)
   console.log(`🔒 User approval system: ACTIVE`)
   console.log(`📊 Admin routes: /pending-users, /all-users, /approve-user, /reject-user`)
+  console.log(`🔄 Deployment timestamp: ${new Date().toISOString()}`)
 })
 
 export { io }
