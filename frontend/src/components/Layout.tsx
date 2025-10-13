@@ -11,7 +11,8 @@ import {
   Menu,
   X,
   LogOut,
-  Bell
+  Bell,
+  Shield
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -27,6 +28,10 @@ const navigation = [
   { name: 'Dispatch', href: '/dispatch', icon: MapPin },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Settings', href: '/settings', icon: Settings },
+]
+
+const adminNavigation = [
+  { name: 'Admin Panel', href: '/admin', icon: Shield },
 ]
 
 export default function Layout({ children }: LayoutProps) {
@@ -76,6 +81,31 @@ export default function Layout({ children }: LayoutProps) {
                 </Link>
               )
             })}
+            
+            {/* Admin Panel - Only show for admin users */}
+            {user?.role === 'ADMIN' && (
+              <>
+                <div className="border-t border-gray-200 my-2"></div>
+                {adminNavigation.map((item) => {
+                  const isActive = location.pathname === item.href
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                        isActive
+                          ? 'bg-red-100 text-red-900'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.name}
+                    </Link>
+                  )
+                })}
+              </>
+            )}
           </nav>
         </div>
       </div>
@@ -105,6 +135,30 @@ export default function Layout({ children }: LayoutProps) {
                 </Link>
               )
             })}
+            
+            {/* Admin Panel - Only show for admin users */}
+            {user?.role === 'ADMIN' && (
+              <>
+                <div className="border-t border-gray-200 my-2"></div>
+                {adminNavigation.map((item) => {
+                  const isActive = location.pathname === item.href
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                        isActive
+                          ? 'bg-red-100 text-red-900'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.name}
+                    </Link>
+                  )
+                })}
+              </>
+            )}
           </nav>
         </div>
       </div>
