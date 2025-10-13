@@ -28,19 +28,28 @@ dotenv.config()
 import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
-// Test database connection on startup
-async function testDatabaseConnection() {
+// Initialize database on startup
+async function initializeDatabase() {
   try {
-    console.log('🔄 Testing database connection...')
+    console.log('🔄 Initializing database...')
     await prisma.$connect()
     console.log('✅ Database connected successfully')
+    
+    // Try to run migrations
+    try {
+      const { execSync } = require('child_process')
+      execSync('npx prisma migrate deploy', { stdio: 'inherit' })
+      console.log('✅ Database migrations completed')
+    } catch (migrationError: any) {
+      console.log('⚠️ Migration failed, but continuing...', migrationError.message)
+    }
   } catch (error) {
-    console.error('❌ Database connection failed:', error)
+    console.error('❌ Database initialization failed:', error)
   }
 }
 
-// Test connection before starting server
-testDatabaseConnection()
+// Initialize database before starting server
+initializeDatabase()
 
 const app = express()
 const server = createServer(app)
