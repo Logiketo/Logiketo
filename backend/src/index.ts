@@ -24,6 +24,37 @@ import reportRoutes from './routes/reports'
 // Load environment variables
 dotenv.config()
 
+// Initialize Prisma client and run migrations
+import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
+
+// Run database migrations on startup
+async function runMigrations() {
+  try {
+    console.log('🔄 Running database migrations...')
+    await prisma.$connect()
+    console.log('✅ Database connected successfully')
+    
+    // Check if tables exist
+    const userCount = await prisma.user.count()
+    console.log(`📊 Found ${userCount} users in database`)
+  } catch (error) {
+    console.error('❌ Database connection failed:', error)
+    console.log('🔄 Attempting to run migrations...')
+    
+    try {
+      const { execSync } = require('child_process')
+      execSync('npx prisma migrate deploy', { stdio: 'inherit' })
+      console.log('✅ Migrations completed successfully')
+    } catch (migrationError) {
+      console.error('❌ Migration failed:', migrationError)
+    }
+  }
+}
+
+// Run migrations before starting server
+runMigrations()
+
 const app = express()
 const server = createServer(app)
 const io = new Server(server, {
