@@ -43,14 +43,15 @@ router.post('/register', async (req, res) => {
     const saltRounds = 12
     const hashedPassword = await bcrypt.hash(validatedData.password, saltRounds)
 
-    // Create user
+    // Create user (not approved by default)
     const user = await prisma.user.create({
       data: {
         email: validatedData.email,
         password: hashedPassword,
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
-        role: validatedData.role || 'USER'
+        role: validatedData.role || 'USER',
+        isApproved: false  // New users need approval
       },
       select: {
         id: true,
@@ -59,24 +60,24 @@ router.post('/register', async (req, res) => {
         lastName: true,
         role: true,
         isActive: true,
+        isApproved: true,
         createdAt: true
       }
     })
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET!,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as SignOptions
-    )
+    // TODO: Send email notification to admin about new user registration
+    // For now, just log the registration
+    console.log(`🔔 New user registration: ${user.firstName} ${user.lastName} (${user.email}) - Pending Approval`)
 
     res.status(201).json({
       success: true,
       data: {
-        user,
-        token
+        user: {
+          ...user,
+          isApproved: false  // Always return false for new registrations
+        }
       },
-      message: 'User registered successfully'
+      message: 'Registration successful! Your account is pending admin approval. You will receive an email when approved.'
     })
     return
   } catch (error) {
@@ -119,6 +120,14 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({
         success: false,
         message: 'Account is deactivated'
+      })
+    }
+
+    // Check if user is approved
+    if (!user.isApproved) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account is pending admin approval. Please wait for approval before logging in.'
       })
     }
 
@@ -278,6 +287,143 @@ router.post('/logout', authenticate, (req, res) => {
     success: true,
     message: 'Logout successful'
   })
+})
+
+// Admin routes for user approval
+// Get pending users (admin only)
+router.get('/pending-users', authenticate, async (req: AuthRequest, res) => {
+  try {
+    // Check if user is admin
+    if (req.user!.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin role required.'
+      })
+    }
+
+    const pendingUsers = await prisma.user.findMany({
+      where: {
+        isApproved: false,
+        isActive: true
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        createdAt: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    res.json({
+      success: true,
+      data: pendingUsers
+    })
+  } catch (error) {
+    console.error('Get pending users error:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    })
+  }
+})
+
+// Approve user (admin only)
+router.put('/approve-user/:userId', authenticate, async (req: AuthRequest, res) => {
+  try {
+    // Check if user is admin
+    if (req.user!.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin role required.'
+      })
+    }
+
+    const { userId } = req.params
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { isApproved: true },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isApproved: true
+      }
+    })
+
+    // TODO: Send approval email to user
+    console.log(`✅ User approved: ${user.firstName} ${user.lastName} (${user.email})`)
+
+    res.json({
+      success: true,
+      data: user,
+      message: 'User approved successfully'
+    })
+  } catch (error) {
+    console.error('Approve user error:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    })
+  }
+})
+
+// Reject user (admin only)
+router.delete('/reject-user/:userId', authenticate, async (req: AuthRequest, res) => {
+  try {
+    // Check if user is admin
+    if (req.user!.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin role required.'
+      })
+    }
+
+    const { userId } = req.params
+
+    // Get user info before deletion
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        firstName: true,
+        lastName: true,
+        email: true
+      }
+    })
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      })
+    }
+
+    // Delete the user
+    await prisma.user.delete({
+      where: { id: userId }
+    })
+
+    // TODO: Send rejection email to user
+    console.log(`❌ User rejected: ${user.firstName} ${user.lastName} (${user.email})`)
+
+    res.json({
+      success: true,
+      message: 'User rejected and deleted successfully'
+    })
+  } catch (error) {
+    console.error('Reject user error:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    })
+  }
 })
 
 export default router
