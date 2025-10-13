@@ -85,6 +85,14 @@ app.get('/health', (req, res) => {
   })
 })
 
+// Test endpoint for admin routes
+app.get('/api/test-admin', (req, res) => {
+  res.json({ 
+    message: 'Admin routes are working',
+    timestamp: new Date().toISOString()
+  })
+})
+
 // API Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
