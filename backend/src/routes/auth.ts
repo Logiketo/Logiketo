@@ -44,47 +44,34 @@ router.post('/register', async (req, res) => {
     const saltRounds = 12
     const hashedPassword = await bcrypt.hash(validatedData.password, saltRounds)
 
-    // Create user (not approved by default)
-    const user = await prisma.user.create({
-      data: {
-        email: validatedData.email,
-        password: hashedPassword,
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
-        role: validatedData.role || 'USER',
-        isApproved: false  // New users need approval
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        isApproved: true,
-        createdAt: true
-      }
-    })
+    // Create user (not approved by default) using raw SQL
+    const user = await prisma.$queryRaw`
+      INSERT INTO users (id, email, password, "firstName", "lastName", role, "isActive", "isApproved", "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), ${validatedData.email}, ${hashedPassword}, ${validatedData.firstName}, ${validatedData.lastName}, ${validatedData.role || 'USER'}, true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING id, email, "firstName", "lastName", role, "isActive", "isApproved", "createdAt"
+    `
+    
+    const newUser = (user as any)[0]
 
     // Send email notification to admin about new user registration
-    console.log(`🔔 New user registration: ${user.firstName} ${user.lastName} (${user.email}) - Pending Approval`)
+    console.log(`🔔 New user registration: ${newUser.firstName} ${newUser.lastName} (${newUser.email}) - Pending Approval`)
     
     // Get admin email (you can configure this in environment variables)
     const adminEmail = process.env.ADMIN_EMAIL || 'sales@logiketo.com'
     
     // Send notification email to admin
     await emailService.sendNewUserNotification(adminEmail, {
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      role: user.role
+      firstName: newUser.firstName,
+      lastName: newUser.lastName,
+      email: newUser.email,
+      role: newUser.role
     })
 
     res.status(201).json({
       success: true,
       data: {
         user: {
-          ...user,
+          ...newUser,
           isApproved: false  // Always return false for new registrations
         }
       },
@@ -114,10 +101,14 @@ router.post('/login', async (req, res) => {
   try {
     const validatedData = loginSchema.parse(req.body)
 
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email: validatedData.email }
-    })
+    // Find user using raw SQL
+    const userResult = await prisma.$queryRaw`
+      SELECT id, email, password, "firstName", "lastName", role, "isActive", "isApproved", "createdAt", "updatedAt"
+      FROM users
+      WHERE email = ${validatedData.email}
+    `
+    
+    const user = (userResult as any)[0]
 
     if (!user) {
       return res.status(401).json({
@@ -312,31 +303,20 @@ router.get('/pending-users', authenticate, async (req: AuthRequest, res) => {
       })
     }
 
-    const pendingUsers = await prisma.user.findMany({
-      where: {
-        isApproved: false,
-        isActive: true
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        createdAt: true
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+    const pendingUsers = await prisma.$queryRaw`
+      SELECT id, email, "firstName", "lastName", role, "createdAt"
+      FROM users
+      WHERE "isApproved" = false AND "isActive" = true
+      ORDER BY "createdAt" DESC
+    `
 
-    res.json({
+    return res.json({
       success: true,
       data: pendingUsers
     })
   } catch (error) {
     console.error('Get pending users error:', error)
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     })
@@ -356,35 +336,31 @@ router.put('/approve-user/:userId', authenticate, async (req: AuthRequest, res) 
 
     const { userId } = req.params
 
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: { isApproved: true },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isApproved: true
-      }
-    })
+    const user = await prisma.$queryRaw`
+      UPDATE users 
+      SET "isApproved" = true, "updatedAt" = CURRENT_TIMESTAMP
+      WHERE id = ${userId}
+      RETURNING id, email, "firstName", "lastName", role, "isApproved"
+    `
+    
+    const updatedUser = (user as any)[0]
 
     // Send approval email to user
-    console.log(`✅ User approved: ${user.firstName} ${user.lastName} (${user.email})`)
+    console.log(`✅ User approved: ${updatedUser.firstName} ${updatedUser.lastName} (${updatedUser.email})`)
     
-    await emailService.sendApprovalNotification(user.email, {
-      firstName: user.firstName,
-      lastName: user.lastName
+    await emailService.sendApprovalNotification(updatedUser.email, {
+      firstName: updatedUser.firstName,
+      lastName: updatedUser.lastName
     })
 
-    res.json({
+    return res.json({
       success: true,
-      data: user,
+      data: updatedUser,
       message: 'User approved successfully'
     })
   } catch (error) {
     console.error('Approve user error:', error)
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     })
@@ -405,14 +381,13 @@ router.delete('/reject-user/:userId', authenticate, async (req: AuthRequest, res
     const { userId } = req.params
 
     // Get user info before deletion
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        firstName: true,
-        lastName: true,
-        email: true
-      }
-    })
+    const userResult = await prisma.$queryRaw`
+      SELECT "firstName", "lastName", email
+      FROM users
+      WHERE id = ${userId}
+    `
+    
+    const user = (userResult as any)[0]
 
     if (!user) {
       return res.status(404).json({
@@ -422,9 +397,9 @@ router.delete('/reject-user/:userId', authenticate, async (req: AuthRequest, res
     }
 
     // Delete the user
-    await prisma.user.delete({
-      where: { id: userId }
-    })
+    await prisma.$executeRaw`
+      DELETE FROM users WHERE id = ${userId}
+    `
 
     // Send rejection email to user
     console.log(`❌ User rejected: ${user.firstName} ${user.lastName} (${user.email})`)
@@ -434,13 +409,13 @@ router.delete('/reject-user/:userId', authenticate, async (req: AuthRequest, res
       lastName: user.lastName
     })
 
-    res.json({
+    return res.json({
       success: true,
       message: 'User rejected and deleted successfully'
     })
   } catch (error) {
     console.error('Reject user error:', error)
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     })
