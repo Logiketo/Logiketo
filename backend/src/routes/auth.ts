@@ -4,6 +4,7 @@ import jwt, { SignOptions } from 'jsonwebtoken'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import { authenticate, AuthRequest } from '../middleware/auth'
+import { emailService } from '../services/emailService'
 
 const router = express.Router()
 const prisma = new PrismaClient()
@@ -65,9 +66,19 @@ router.post('/register', async (req, res) => {
       }
     })
 
-    // TODO: Send email notification to admin about new user registration
-    // For now, just log the registration
+    // Send email notification to admin about new user registration
     console.log(`🔔 New user registration: ${user.firstName} ${user.lastName} (${user.email}) - Pending Approval`)
+    
+    // Get admin email (you can configure this in environment variables)
+    const adminEmail = process.env.ADMIN_EMAIL || 'sales@logiketo.com'
+    
+    // Send notification email to admin
+    await emailService.sendNewUserNotification(adminEmail, {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role
+    })
 
     res.status(201).json({
       success: true,
@@ -358,8 +369,13 @@ router.put('/approve-user/:userId', authenticate, async (req: AuthRequest, res) 
       }
     })
 
-    // TODO: Send approval email to user
+    // Send approval email to user
     console.log(`✅ User approved: ${user.firstName} ${user.lastName} (${user.email})`)
+    
+    await emailService.sendApprovalNotification(user.email, {
+      firstName: user.firstName,
+      lastName: user.lastName
+    })
 
     res.json({
       success: true,
@@ -410,8 +426,13 @@ router.delete('/reject-user/:userId', authenticate, async (req: AuthRequest, res
       where: { id: userId }
     })
 
-    // TODO: Send rejection email to user
+    // Send rejection email to user
     console.log(`❌ User rejected: ${user.firstName} ${user.lastName} (${user.email})`)
+    
+    await emailService.sendRejectionNotification(user.email, {
+      firstName: user.firstName,
+      lastName: user.lastName
+    })
 
     res.json({
       success: true,
