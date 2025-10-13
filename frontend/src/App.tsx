@@ -16,6 +16,7 @@ import Dispatch from '@/pages/Dispatch'
 import Reports from '@/pages/Reports'
 import Plans from '@/pages/Plans'
 import Settings from '@/pages/Settings'
+import AdminPanel from '@/pages/AdminPanel'
 
 function App() {
   const { user, isLoading } = useAuth()
@@ -57,6 +58,7 @@ function App() {
         <Route path="/reports" element={<MainLayout><Reports /></MainLayout>} />
         <Route path="/plans" element={<MainLayout><Plans /></MainLayout>} />
         <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
+        <Route path="/admin" element={<MainLayout><AdminPanel /></MainLayout>} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </ThemeProvider>
