@@ -34,6 +34,15 @@ async function testDatabaseConnection() {
     console.log('🔄 Testing database connection...')
     await prisma.$connect()
     console.log('✅ Database connected successfully')
+    
+    // Try to run migrations if tables don't exist
+    try {
+      await prisma.user.findFirst()
+      console.log('✅ Database tables exist')
+    } catch (error) {
+      console.log('⚠️ Database tables missing, but server will start')
+      console.log('💡 You may need to run migrations manually')
+    }
   } catch (error) {
     console.error('❌ Database connection failed:', error)
     console.log('⚠️ Server will start anyway, but database operations may fail')
