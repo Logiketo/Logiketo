@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, X, Clock, Users, AlertCircle, UserCheck, UserX } from 'lucide-react'
 import toast from 'react-hot-toast'
+import api from '@/services/api'
 
 interface PendingUser {
   id: string
@@ -25,59 +26,21 @@ interface AllUser {
 
 // API functions
 const getPendingUsers = async (): Promise<PendingUser[]> => {
-  const response = await fetch('/api/auth/pending-users', {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  })
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch pending users')
-  }
-  
-  const data = await response.json()
-  return data.data
+  const response = await api.get('/auth/pending-users')
+  return response.data.data
 }
 
 const getAllUsers = async (): Promise<AllUser[]> => {
-  const response = await fetch('/api/auth/all-users', {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  })
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch all users')
-  }
-  
-  const data = await response.json()
-  return data.data
+  const response = await api.get('/auth/all-users')
+  return response.data.data
 }
 
 const approveUser = async (userId: string): Promise<void> => {
-  const response = await fetch(`/api/auth/approve-user/${userId}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  })
-  
-  if (!response.ok) {
-    throw new Error('Failed to approve user')
-  }
+  await api.put(`/auth/approve-user/${userId}`)
 }
 
 const rejectUser = async (userId: string): Promise<void> => {
-  const response = await fetch(`/api/auth/reject-user/${userId}`, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  })
-  
-  if (!response.ok) {
-    throw new Error('Failed to reject user')
-  }
+  await api.delete(`/auth/reject-user/${userId}`)
 }
 
 export default function AdminPanel() {
