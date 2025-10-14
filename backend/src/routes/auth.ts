@@ -47,7 +47,7 @@ router.post('/register', async (req, res) => {
     // Create user (not approved by default) using raw SQL
     const user = await prisma.$queryRaw`
       INSERT INTO users (id, email, password, "firstName", "lastName", role, "isActive", "isApproved", "createdAt", "updatedAt")
-      VALUES (gen_random_uuid(), ${validatedData.email}, ${hashedPassword}, ${validatedData.firstName}, ${validatedData.lastName}, ${validatedData.role || 'USER'}, true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      VALUES (gen_random_uuid(), ${validatedData.email}, ${hashedPassword}, ${validatedData.firstName}, ${validatedData.lastName}, ${validatedData.role || 'USER'}::"UserRole", true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING id, email, "firstName", "lastName", role, "isActive", "isApproved", "createdAt"
     `
     
