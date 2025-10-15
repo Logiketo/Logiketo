@@ -47,12 +47,6 @@ export default function Landing() {
             Add and save loads, manage dispatch operations, and track deliveries with our powerful logistics tools. Built for dispatchers who need efficient load management and mapping capabilities.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link
-              to="/register"
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-4 px-8 rounded-xl transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
-            >
-              Get Started
-            </Link>
             <button className="text-gray-700 hover:text-blue-600 font-medium transition-all duration-200 underline decoration-2 underline-offset-4 hover:decoration-blue-500">
               Watch demo
             </button>
