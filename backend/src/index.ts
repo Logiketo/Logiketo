@@ -47,7 +47,11 @@ const app = express()
 const server = createServer(app)
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: [
+      process.env.FRONTEND_URL || 'http://localhost:5173',
+      'https://www.logiketo.com',
+      'https://logiketo.com'
+    ],
     methods: ['GET', 'POST']
   }
 })
@@ -66,10 +70,23 @@ app.use(helmet())
 app.use(compression())
 app.use(morgan('combined'))
 app.use(limiter)
-app.use(cors({
-  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:5174'],
-  credentials: true
-}))
+
+// CORS configuration with debugging
+const corsOptions = {
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:5173', 
+    'http://localhost:5174',
+    'https://www.logiketo.com',
+    'https://logiketo.com'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}
+
+console.log('🔧 CORS Configuration:', corsOptions)
+
+app.use(cors(corsOptions))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
@@ -91,6 +108,51 @@ app.get('/api/test-admin', (req, res) => {
     message: 'Admin routes are working',
     timestamp: new Date().toISOString()
   })
+})
+
+// Monitor all users (for debugging)
+app.get('/api/monitor/users', async (req, res) => {
+  try {
+    console.log('🔍 Production user monitoring request')
+    
+    const users = await prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        isApproved: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    })
+    
+    console.log(`📊 Production database has ${users.length} users`)
+    
+    // Log each user for debugging
+    users.forEach((user, index) => {
+      console.log(`${index + 1}. ${user.firstName} ${user.lastName} (${user.email}) - ${user.role} - Approved: ${user.isApproved}`)
+    })
+    
+    res.json({
+      success: true,
+      totalUsers: users.length,
+      users: users,
+      database: 'Production Railway Database',
+      timestamp: new Date().toISOString()
+    })
+    
+  } catch (error: any) {
+    console.error('❌ Production user monitoring error:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: 'Failed to get users from production database'
+    })
+  }
 })
 
 // API Routes

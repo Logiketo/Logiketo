@@ -23,8 +23,15 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required')
 })
 
-// Register new user
+// Register new user - DISABLED FOR SETUP
 router.post('/register', async (req, res) => {
+  // TEMPORARILY DISABLED FOR SETUP
+  return res.status(503).json({
+    success: false,
+    message: 'Registration is temporarily disabled while we set up the platform. Please check back later.'
+  })
+  
+  /* ORIGINAL REGISTRATION CODE - COMMENTED OUT FOR SETUP
   try {
     const validatedData = registerSchema.parse(req.body)
     
@@ -94,6 +101,7 @@ router.post('/register', async (req, res) => {
     })
     return
   }
+  */
 })
 
 // Login user
@@ -448,6 +456,72 @@ router.delete('/reject-user/:userId', authenticate, async (req: AuthRequest, res
     return res.status(500).json({
       success: false,
       message: 'Internal server error'
+    })
+  }
+})
+
+// Monitor all users (for debugging)
+router.get('/monitor/users', async (req, res) => {
+  try {
+    console.log('🔍 Production user monitoring request')
+    
+    const users = await prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        isApproved: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    })
+    
+    console.log(`📊 Production database has ${users.length} users`)
+    
+    // Log each user for debugging
+    users.forEach((user, index) => {
+      console.log(`${index + 1}. ${user.firstName} ${user.lastName} (${user.email}) - ${user.role} - Approved: ${user.isApproved}`)
+    })
+    
+    res.json({
+      success: true,
+      totalUsers: users.length,
+      users: users,
+      database: 'Production Railway Database',
+      timestamp: new Date().toISOString()
+    })
+    
+  } catch (error: any) {
+    console.error('❌ Production user monitoring error:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: 'Failed to get users from production database'
+    })
+  }
+})
+
+// Database info endpoint
+router.get('/monitor/database', async (req, res) => {
+  try {
+    const dbInfo = await prisma.$queryRaw`SELECT current_database(), current_user, version()` as any[]
+    const userCount = await prisma.$queryRaw`SELECT COUNT(*) as count FROM users` as any[]
+    
+    res.json({
+      success: true,
+      databaseInfo: dbInfo[0],
+      userCount: userCount[0].count,
+      connectionString: process.env.DATABASE_URL ? 'Set' : 'Not set',
+      timestamp: new Date().toISOString()
+    })
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
     })
   }
 })

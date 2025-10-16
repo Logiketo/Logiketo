@@ -1,0 +1,124 @@
+{
+  "allUsers": [
+    {
+      "id": "cmgqltbky00011483d1y653a6",
+      "email": "sasa12125@logiketo.com",
+      "firstName": "121",
+      "lastName": "21",
+      "role": "USER",
+      "isActive": true,
+      "isApproved": false,
+      "createdAt": "2025-10-14T13:34:48.035Z"
+    },
+    {
+      "id": "cmgqlry5f00001483zlu22rjx",
+      "email": "sasa12112@logiketo.com",
+      "firstName": "121",
+      "lastName": "asa",
+      "role": "USER",
+      "isActive": true,
+      "isApproved": false,
+      "createdAt": "2025-10-14T13:33:43.971Z"
+    },
+    {
+      "id": "cmgpn3lzd000173tucdp7dtaa",
+      "email": "test123@example.com",
+      "firstName": "Test",
+      "lastName": "User",
+      "role": "USER",
+      "isActive": true,
+      "isApproved": false,
+      "createdAt": "2025-10-13T21:23:01.513Z"
+    },
+    {
+      "id": "cmgpn2xry000073turu7gymby",
+      "email": "sasa1212@logiketo.com",
+      "firstName": "sales",
+      "lastName": "121",
+      "role": "USER",
+      "isActive": true,
+      "isApproved": false,
+      "createdAt": "2025-10-13T21:22:30.142Z"
+    },
+    {
+      "id": "cmgpmo9fo0000fbq8kwrt0pda",
+      "email": "sasa112@logiketo.com",
+      "firstName": "121",
+      "lastName": "212",
+      "role": "USER",
+      "isActive": true,
+      "isApproved": false,
+      "createdAt": "2025-10-13T21:11:05.412Z"
+    },
+    {
+      "id": "cmgpmi7tq0000gzrgteq7sf5c",
+      "email": "sasa12@logiketo.com",
+      "firstName": "121",
+      "lastName": "212",
+      "role": "USER",
+      "isActive": true,
+      "isApproved": false,
+      "createdAt": "2025-10-13T21:06:23.391Z"
+    },
+    {
+      "id": "cmgplbpf600006qhzcd1egpkr",
+      "email": "sales@logiketo.com",
+      "firstName": "sales",
+      "lastName": "logiketo",
+      "role": "ADMIN",
+      "isActive": true,
+      "isApproved": true,
+      "createdAt": "2025-10-13T20:33:19.987Z"
+    }
+  ],
+  "pendingUsers": [
+    {
+      "id": "cmgqltbky00011483d1y653a6",
+      "email": "sasa12125@logiketo.com",
+      "firstName": "121",
+      "lastName": "21",
+      "role": "USER",
+      "createdAt": "2025-10-14T13:34:48.035Z"
+    },
+    {
+      "id": "cmgqlry5f00001483zlu22rjx",
+      "email": "sasa12112@logiketo.com",
+      "firstName": "121",
+      "lastName": "asa",
+      "role": "USER",
+      "createdAt": "2025-10-14T13:33:43.971Z"
+    },
+    {
+      "id": "cmgpn3lzd000173tucdp7dtaa",
+      "email": "test123@example.com",
+      "firstName": "Test",
+      "lastName": "User",
+      "role": "USER",
+      "createdAt": "2025-10-13T21:23:01.513Z"
+    },
+    {
+      "id": "cmgpn2xry000073turu7gymby",
+      "email": "sasa1212@logiketo.com",
+      "firstName": "sales",
+      "lastName": "121",
+      "role": "USER",
+      "createdAt": "2025-10-13T21:22:30.142Z"
+    },
+    {
+      "id": "cmgpmo9fo0000fbq8kwrt0pda",
+      "email": "sasa112@logiketo.com",
+      "firstName": "121",
+      "lastName": "212",
+      "role": "USER",
+      "createdAt": "2025-10-13T21:11:05.412Z"
+    },
+    {
+      "id": "cmgpmi7tq0000gzrgteq7sf5c",
+      "email": "sasa12@logiketo.com",
+      "firstName": "121",
+      "lastName": "212",
+      "role": "USER",
+      "createdAt": "2025-10-13T21:06:23.391Z"
+    }
+  ]
+}
