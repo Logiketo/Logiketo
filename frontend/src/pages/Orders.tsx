@@ -870,20 +870,13 @@ export default function Orders() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div>
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Order Management</h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
             Track and manage all your logistics orders.
           </p>
         </div>
-        <button 
-          onClick={handleAddNew}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 shadow-sm"
-        >
-          <Plus className="h-5 w-5" />
-          Add New Order
-        </button>
       </div>
 
       <div className="card p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
