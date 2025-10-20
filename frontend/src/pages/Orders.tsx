@@ -777,6 +777,8 @@ export default function Orders() {
   const queryClient = useQueryClient()
   const location = useLocation()
 
+  console.log('Orders component rendering, location:', location)
+
   // Parse URL parameters for status filtering
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)

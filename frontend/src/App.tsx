@@ -52,8 +52,7 @@ function App() {
         <Route path="/units" element={<MainLayout><Units /></MainLayout>} />
         <Route path="/employees" element={<MainLayout><Employees /></MainLayout>} />
         <Route path="/customers" element={<MainLayout><Customers /></MainLayout>} />
-        <Route path="/orders" element={<Navigate to="/orders?status=ASSIGNED,IN_TRANSIT" replace />} />
-        <Route path="/orders*" element={<MainLayout><Orders /></MainLayout>} />
+        <Route path="/orders" element={<MainLayout><Orders /></MainLayout>} />
         <Route path="/dispatch" element={<Navigate to="/units" replace />} />
         <Route path="/map" element={<MainLayout><Dispatch /></MainLayout>} />
         <Route path="/reports" element={<MainLayout><Reports /></MainLayout>} />
