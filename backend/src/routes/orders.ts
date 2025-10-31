@@ -181,7 +181,7 @@ router.get('/', authenticate, async (req, res) => {
     try {
       console.log('Attempting raw SQL query...')
       
-      // Use parameterized raw query to safely handle values
+      // Use raw query with safe integer interpolation (limitNum and skip are validated integers)
       const rawOrders = await prisma.$queryRawUnsafe(`
         SELECT 
           o.id,
@@ -225,8 +225,8 @@ router.get('/', authenticate, async (req, res) => {
         LEFT JOIN vehicles v ON o."vehicleId" = v.id
         LEFT JOIN users u ON o."driverId" = u.id
         ORDER BY o."createdAt" DESC
-        LIMIT $1 OFFSET $2
-      `, limitNum, skip) as any[]
+        LIMIT ${limitNum} OFFSET ${skip}
+      `) as any[]
       
       console.log(`Raw query returned ${rawOrders.length} rows`)
       
