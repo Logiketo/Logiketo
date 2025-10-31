@@ -18,7 +18,7 @@ import {
   CheckCircle,
   XCircle,
 } from 'lucide-react'
-import { orderService, Order } from '@/services/orderService'
+import { orderService, Order, OrdersResponse } from '@/services/orderService'
 import { customerService } from '@/services/customerService'
 import { vehicleService } from '@/services/vehicleService'
 import { employeeService } from '@/services/employeeService'
@@ -61,7 +61,7 @@ interface OrderFormProps {
   onSuccess: () => void
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { color: string; icon: typeof Clock; label: string }> = {
   PENDING: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: 'Pending' },
   ASSIGNED: { color: 'bg-blue-100 text-blue-800', icon: User, label: 'Assigned' },
   IN_TRANSIT: { color: 'bg-purple-100 text-purple-800', icon: Truck, label: 'In Transit' },
