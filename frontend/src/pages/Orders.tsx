@@ -786,9 +786,15 @@ export default function Orders() {
     if (statusParam) {
       setStatusFilter(statusParam)
     } else {
-      setStatusFilter('')
+      // If no status param, redirect to active orders (ASSIGNED,IN_TRANSIT)
+      if (location.pathname === '/orders' && !statusParam) {
+        window.history.replaceState({}, '', '/orders?status=ASSIGNED,IN_TRANSIT')
+        setStatusFilter('ASSIGNED,IN_TRANSIT')
+      } else {
+        setStatusFilter('')
+      }
     }
-  }, [location.search])
+  }, [location.search, location.pathname])
 
   // Close dropdowns when clicking outside
   useEffect(() => {
