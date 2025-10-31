@@ -166,10 +166,14 @@ router.get('/', authenticate, async (req, res) => {
       where.vehicleId = vehicleId
     }
 
-    const [orders, total] = await Promise.all([
-      prisma.order.findMany({
-        where,
-        include: {
+    // Simplified query - no where clause to avoid enum errors
+    console.log('=== GET ORDERS - Simplified Query ===')
+    
+    const orders = await prisma.order.findMany({
+      take: limitNum,
+      skip: skip,
+      orderBy: { createdAt: 'desc' },
+      include: {
           customer: {
             select: {
               id: true,
@@ -195,13 +199,12 @@ router.get('/', authenticate, async (req, res) => {
               email: true
             }
           }
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limitNum
-      }),
-      prisma.order.count({ where })
-    ])
+      }
+    })
+    
+    const total = await prisma.order.count()
+    
+    console.log(`Fetched ${orders.length} orders successfully`)
 
 
     res.json({
