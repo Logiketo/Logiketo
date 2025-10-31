@@ -779,22 +779,19 @@ export default function Orders() {
 
   console.log('Orders component rendering, location:', location)
 
-  // Parse URL parameters for status filtering
+  // Parse route-based status filtering
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const statusParam = urlParams.get('status')
-    if (statusParam) {
-      setStatusFilter(statusParam)
+    // Map routes to status filters
+    if (location.pathname === '/orders-active') {
+      setStatusFilter('ASSIGNED,IN_TRANSIT')
+    } else if (location.pathname === '/orders-delivered') {
+      setStatusFilter('DELIVERED,CANCELLED')
+    } else if (location.pathname === '/orders-pending') {
+      setStatusFilter('PENDING')
     } else {
-      // If no status param, redirect to active orders (ASSIGNED,IN_TRANSIT)
-      if (location.pathname === '/orders' && !statusParam) {
-        window.history.replaceState({}, '', '/orders?status=ASSIGNED,IN_TRANSIT')
-        setStatusFilter('ASSIGNED,IN_TRANSIT')
-      } else {
-        setStatusFilter('')
-      }
+      setStatusFilter('')
     }
-  }, [location.search, location.pathname])
+  }, [location.pathname])
 
   // Close dropdowns when clicking outside
   useEffect(() => {

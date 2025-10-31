@@ -41,9 +41,9 @@ const myDispatchNavigation = [
 ]
 
 const ordersNavigation = [
-  { name: 'Active', href: '/orders?status=ASSIGNED,IN_TRANSIT', icon: Package },
-  { name: 'Delivered', href: '/orders?status=DELIVERED,CANCELLED', icon: CheckCircle },
-  { name: 'Pending', href: '/orders?status=PENDING', icon: Clock },
+  { name: 'Active', href: '/orders-active', icon: Package },
+  { name: 'Delivered', href: '/orders-delivered', icon: CheckCircle },
+  { name: 'Pending', href: '/orders-pending', icon: Clock },
 ]
 
 const summaryNavigation = [
