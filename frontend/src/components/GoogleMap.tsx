@@ -274,15 +274,27 @@ const GoogleMap: React.FC<GoogleMapProps> = (props) => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-96 w-full bg-gray-100 rounded-lg">
-        <div className="text-center">
+      <div className="flex items-center justify-center h-96 w-full bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-yellow-300">
+        <div className="text-center p-6">
           <div className="text-yellow-600 mb-4">
             <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Google Maps API Key Required</h3>
-          <p className="text-gray-600">Please add VITE_GOOGLE_MAPS_API_KEY to your environment variables.</p>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Google Maps API Key Missing</h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            {error.includes('Vercel') ? error : 'Please add VITE_GOOGLE_MAPS_API_KEY to Vercel environment variables.'}
+          </p>
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg text-left text-sm">
+            <p className="font-semibold mb-2">To fix:</p>
+            <ol className="list-decimal list-inside space-y-1 text-gray-700 dark:text-gray-300">
+              <li>Go to Vercel Dashboard → Your Project</li>
+              <li>Settings → Environment Variables</li>
+              <li>Add: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">VITE_GOOGLE_MAPS_API_KEY</code></li>
+              <li>Value: Your Google Maps API key</li>
+              <li>Redeploy the frontend</li>
+            </ol>
+          </div>
         </div>
       </div>
     )

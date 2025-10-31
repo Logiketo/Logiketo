@@ -1011,8 +1011,14 @@ export default function Orders() {
           <div className="text-center py-12">
             <Package className="mx-auto h-12 w-12 text-red-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Error loading orders</h3>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              There was an error loading the orders. Please try again.
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 mb-2">
+              There was an error loading the orders.
+            </p>
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400 font-mono bg-red-50 dark:bg-red-900/20 p-2 rounded">
+              {error instanceof Error ? error.message : String(error)}
+            </p>
+            <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+              Check Railway logs for detailed error information.
             </p>
           </div>
         ) : orders.length === 0 ? (
