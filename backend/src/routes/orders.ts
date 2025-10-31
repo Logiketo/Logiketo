@@ -87,6 +87,10 @@ const generateOrderNumber = async (): Promise<string> => {
 
 // Get all orders
 router.get('/', authenticate, async (req, res) => {
+  console.log('=== ORDERS ENDPOINT HIT ===')
+  console.log('Request query:', req.query)
+  console.log('Request headers:', req.headers)
+  
   try {
     const { 
       page = '1', 
@@ -103,6 +107,8 @@ router.get('/', authenticate, async (req, res) => {
     const pageNum = parseInt(page as string)
     const limitNum = parseInt(limit as string)
     const skip = (pageNum - 1) * limitNum
+
+    console.log('Parsed params:', { pageNum, limitNum, skip })
 
     const where: any = {}
     
@@ -173,31 +179,56 @@ router.get('/', authenticate, async (req, res) => {
     let total = 0
     
     try {
-      // Try with minimal includes first
-      // Use raw query to avoid enum type issues completely
-      const rawOrders = await prisma.$queryRaw`
+      console.log('Attempting raw SQL query...')
+      
+      // Use simple raw query first to test
+      const rawOrders = await prisma.$queryRawUnsafe(`
         SELECT 
-          o.*,
-          c.id as "customer_id",
-          c.name as "customer_name", 
-          c.email as "customer_email",
-          v.id as "vehicle_id",
-          v.make as "vehicle_make",
-          v.model as "vehicle_model",
-          v."licensePlate" as "vehicle_licensePlate",
-          v."unitNumber" as "vehicle_unitNumber",
-          v."driverName" as "vehicle_driverName",
-          u.id as "driver_id",
-          u."firstName" as "driver_firstName",
-          u."lastName" as "driver_lastName",
-          u.email as "driver_email"
+          o.id,
+          o."orderNumber",
+          o."customerId",
+          o."vehicleId",
+          o."driverId",
+          o."customerLoadNumber",
+          o."pickupAddress",
+          o."deliveryAddress",
+          o."pickupDate",
+          o."deliveryDate",
+          o.status::text as status,
+          o.priority::text as priority,
+          o.description,
+          o.miles,
+          o.pieces,
+          o.weight,
+          o."loadPay",
+          o."driverPay",
+          o.notes,
+          o.document,
+          o.documents,
+          o."createdAt",
+          o."updatedAt",
+          c.id as customer_id,
+          c.name as customer_name, 
+          c.email as customer_email,
+          v.id as vehicle_id,
+          v.make as vehicle_make,
+          v.model as vehicle_model,
+          v."licensePlate" as vehicle_licensePlate,
+          v."unitNumber" as vehicle_unitNumber,
+          v."driverName" as vehicle_driverName,
+          u.id as driver_id,
+          u."firstName" as driver_firstName,
+          u."lastName" as driver_lastName,
+          u.email as driver_email
         FROM orders o
         LEFT JOIN customers c ON o."customerId" = c.id
         LEFT JOIN vehicles v ON o."vehicleId" = v.id
         LEFT JOIN users u ON o."driverId" = u.id
         ORDER BY o."createdAt" DESC
         LIMIT ${limitNum} OFFSET ${skip}
-      ` as any[]
+      `) as any[]
+      
+      console.log(`Raw query returned ${rawOrders.length} rows`)
       
       // Transform raw results to match expected format
       orders = rawOrders.map((row: any) => ({
@@ -260,7 +291,9 @@ router.get('/', authenticate, async (req, res) => {
     }
 
 
-    res.json({
+    console.log(`Returning ${orders.length} orders, total: ${total}`)
+    
+    const response = {
       success: true,
       data: orders,
       pagination: {
@@ -269,7 +302,15 @@ router.get('/', authenticate, async (req, res) => {
         total,
         pages: Math.ceil(total / limitNum)
       }
+    }
+    
+    console.log('Response data preview:', {
+      success: response.success,
+      dataLength: response.data.length,
+      pagination: response.pagination
     })
+    
+    res.json(response)
     return
   } catch (error: any) {
     console.error('Get orders error:', error)
