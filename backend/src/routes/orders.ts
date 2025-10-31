@@ -172,14 +172,50 @@ router.get('/', authenticate, async (req, res) => {
       where.vehicleId = vehicleId
     }
 
-    // Ultra-simplified query - minimal includes to avoid any enum/relation errors
-    console.log('=== GET ORDERS - Ultra Simplified Query ===')
+    // Use raw SQL query to bypass Prisma enum type issues completely
+    console.log('=== GET ORDERS - Using Raw SQL Query ===')
     
     let orders: any[] = []
     let total = 0
     
     try {
-      console.log('Attempting raw SQL query...')
+      console.log('Attempting raw SQL query with params:', { limitNum, skip })
+      
+      // Build WHERE clause for raw SQL if needed (for search, orderNumber, etc.)
+      let whereConditions: string[] = []
+      
+      if (orderNumber) {
+        whereConditions.push(`LOWER(o."orderNumber") LIKE LOWER('%${orderNumber}%')`)
+      }
+      
+      if (customerLoad) {
+        whereConditions.push(`(LOWER(c.name) LIKE LOWER('%${customerLoad}%') OR LOWER(o."customerLoadNumber") LIKE LOWER('%${customerLoad}%'))`)
+      }
+      
+      if (status) {
+        // Handle status filtering in raw SQL
+        const statusArray = status.split(',').map(s => s.trim())
+        const statusConditions = statusArray.map(s => `CAST(o.status AS TEXT) = '${s}'`).join(' OR ')
+        whereConditions.push(`(${statusConditions})`)
+      }
+      
+      if (priority) {
+        const priorityArray = priority.split(',').map(p => p.trim())
+        const priorityConditions = priorityArray.map(p => `CAST(o.priority AS TEXT) = '${p}'`).join(' OR ')
+        whereConditions.push(`(${priorityConditions})`)
+      }
+      
+      if (customerId) {
+        whereConditions.push(`o."customerId" = '${customerId}'`)
+      }
+      
+      if (vehicleId) {
+        whereConditions.push(`o."vehicleId" = '${vehicleId}'`)
+      }
+      
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
+      
+      console.log('Raw SQL WHERE clause:', whereClause)
       
       // Use raw query with safe integer interpolation (limitNum and skip are validated integers)
       const rawOrders = await prisma.$queryRawUnsafe(`
@@ -276,10 +312,13 @@ router.get('/', authenticate, async (req, res) => {
         } : null
       }))
       
-      // Get total count using raw SQL to avoid enum issues
+      // Get total count using raw SQL with same WHERE clause
       try {
         const countResult = await prisma.$queryRawUnsafe(`
-          SELECT COUNT(*)::int as count FROM orders
+          SELECT COUNT(*)::int as count 
+          FROM orders o
+          LEFT JOIN customers c ON o."customerId" = c.id
+          ${whereClause}
         `) as any[]
         total = countResult[0]?.count || 0
       } catch (countError: any) {
