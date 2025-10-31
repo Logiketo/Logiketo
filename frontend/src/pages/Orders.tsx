@@ -810,9 +810,9 @@ export default function Orders() {
   }, [])
 
 
-  const { data: ordersData, isLoading, error } = useQuery({
+  const { data: ordersData, isLoading, error } = useQuery<OrdersResponse>({
     queryKey: ['orders', currentPage, orderNumberSearch, customerLoadSearch, unitDriverSearch, statusFilter, priorityFilter],
-    queryFn: async () => {
+    queryFn: async (): Promise<OrdersResponse> => {
       console.log('🔵 Orders query starting...', {
         page: currentPage,
         status: statusFilter,
@@ -837,12 +837,9 @@ export default function Orders() {
           response: err.response?.data,
           status: err.response?.status
         })
+        toast.error(err.response?.data?.message || 'Failed to load orders')
         throw err
       }
-    },
-    onError: (err: any) => {
-      console.error('🚨 React Query onError:', err)
-      toast.error(err.response?.data?.message || 'Failed to load orders')
     }
   })
   
@@ -895,8 +892,8 @@ export default function Orders() {
     await statusMutation.mutateAsync({ id: order.id, status: newStatus })
   }
 
-  const orders = ordersData?.data || []
-  const pagination = ordersData?.pagination
+  const orders = (ordersData as any)?.data || []
+  const pagination = (ordersData as any)?.pagination
 
   return (
     <div className="space-y-6">
@@ -1070,8 +1067,8 @@ export default function Orders() {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {orders.map((order) => {
-                    const statusInfo = statusConfig[order.status]
+                  {orders.map((order: Order) => {
+                    const statusInfo = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.PENDING
                     const StatusIcon = statusInfo.icon
                     // const priorityInfo = priorityConfig[order.priority]
                     
