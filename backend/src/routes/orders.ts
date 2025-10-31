@@ -194,10 +194,6 @@ router.get('/', authenticate, async (req, res) => {
               lastName: true,
               email: true
             }
-          },
-          trackingEvents: {
-            orderBy: { timestamp: 'desc' },
-            take: 1
           }
         },
         orderBy: { createdAt: 'desc' },
