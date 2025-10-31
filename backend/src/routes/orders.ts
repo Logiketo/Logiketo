@@ -260,6 +260,7 @@ router.get('/', authenticate, async (req, res) => {
         LEFT JOIN customers c ON o."customerId" = c.id
         LEFT JOIN vehicles v ON o."vehicleId" = v.id
         LEFT JOIN users u ON o."driverId" = u.id
+        ${whereClause}
         ORDER BY o."createdAt" DESC
         LIMIT ${limitNum} OFFSET ${skip}
       `) as any[]
