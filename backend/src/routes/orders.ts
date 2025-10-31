@@ -181,8 +181,8 @@ router.get('/', authenticate, async (req, res) => {
     try {
       console.log('Attempting raw SQL query...')
       
-      // Use simple raw query first to test
-      const rawOrders = await prisma.$queryRawUnsafe(`
+      // Use parameterized raw query to safely handle values
+      const rawOrders = await prisma.$queryRaw`
         SELECT 
           o.id,
           o."orderNumber",
@@ -194,8 +194,8 @@ router.get('/', authenticate, async (req, res) => {
           o."deliveryAddress",
           o."pickupDate",
           o."deliveryDate",
-          o.status::text as status,
-          o.priority::text as priority,
+          CAST(o.status AS TEXT) as status,
+          CAST(o.priority AS TEXT) as priority,
           o.description,
           o.miles,
           o.pieces,
@@ -226,7 +226,7 @@ router.get('/', authenticate, async (req, res) => {
         LEFT JOIN users u ON o."driverId" = u.id
         ORDER BY o."createdAt" DESC
         LIMIT ${limitNum} OFFSET ${skip}
-      `) as any[]
+      ` as any[]
       
       console.log(`Raw query returned ${rawOrders.length} rows`)
       
