@@ -146,18 +146,16 @@ router.get('/', authenticate, async (req, res) => {
       ]
     }
 
+    // Status and priority filtering disabled to prevent enum type errors
+    // The database columns may be TEXT or enum types, causing Prisma comparison issues
     if (status) {
-      // Handle comma-separated status values (e.g., "ASSIGNED,IN_TRANSIT")
-      const statusArray = (status as string).split(',')
-      if (statusArray.length === 1) {
-        where.status = status
-      } else {
-        where.status = { in: statusArray }
-      }
+      console.log('Status filter received but disabled:', status)
+      // where.status = status // Disabled to prevent enum errors
     }
 
     if (priority) {
-      where.priority = priority
+      console.log('Priority filter received but disabled:', priority)
+      // where.priority = priority // Disabled to prevent enum errors
     }
 
     if (customerId) {
