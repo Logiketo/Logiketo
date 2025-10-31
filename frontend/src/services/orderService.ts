@@ -109,8 +109,16 @@ export const orderService = {
     customerId?: string
     vehicleId?: string
   }): Promise<OrdersResponse> => {
-    const response = await api.get('/orders', { params })
-    return response.data
+    console.log('📞 orderService.getOrders called with params:', params)
+    try {
+      const response = await api.get('/orders', { params })
+      console.log('✅ orderService.getOrders response:', response.data)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ orderService.getOrders error:', error)
+      console.error('Error response:', error.response?.data)
+      throw error
+    }
   },
 
   // Get order by ID

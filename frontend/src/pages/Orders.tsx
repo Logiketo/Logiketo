@@ -809,16 +809,41 @@ export default function Orders() {
 
   const { data: ordersData, isLoading, error } = useQuery({
     queryKey: ['orders', currentPage, orderNumberSearch, customerLoadSearch, unitDriverSearch, statusFilter, priorityFilter],
-    queryFn: () => orderService.getOrders({
-      page: currentPage,
-      limit: 10,
-      orderNumber: orderNumberSearch,
-      customerLoad: customerLoadSearch,
-      unitDriver: unitDriverSearch,
-      status: statusFilter,
-      priority: priorityFilter
-    })
+    queryFn: async () => {
+      console.log('🔵 Orders query starting...', {
+        page: currentPage,
+        status: statusFilter,
+        priority: priorityFilter
+      })
+      try {
+        const result = await orderService.getOrders({
+          page: currentPage,
+          limit: 10,
+          orderNumber: orderNumberSearch,
+          customerLoad: customerLoadSearch,
+          unitDriver: unitDriverSearch,
+          status: statusFilter,
+          priority: priorityFilter
+        })
+        console.log('✅ Orders query successful:', result)
+        return result
+      } catch (err: any) {
+        console.error('❌ Orders query failed:', err)
+        console.error('Error details:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status
+        })
+        throw err
+      }
+    },
+    onError: (err: any) => {
+      console.error('🚨 React Query onError:', err)
+      toast.error(err.response?.data?.message || 'Failed to load orders')
+    }
   })
+  
+  console.log('📊 Orders query state:', { isLoading, hasData: !!ordersData, error })
 
   const deleteMutation = useMutation({
     mutationFn: orderService.deleteOrder,
