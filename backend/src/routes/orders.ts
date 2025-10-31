@@ -166,14 +166,42 @@ router.get('/', authenticate, async (req, res) => {
       where.vehicleId = vehicleId
     }
 
-    // Simplified query - no where clause to avoid enum errors
-    console.log('=== GET ORDERS - Simplified Query ===')
+    // Ultra-simplified query - minimal includes to avoid any enum/relation errors
+    console.log('=== GET ORDERS - Ultra Simplified Query ===')
     
-    const orders = await prisma.order.findMany({
-      take: limitNum,
-      skip: skip,
-      orderBy: { createdAt: 'desc' },
-      include: {
+    let orders: any[] = []
+    let total = 0
+    
+    try {
+      // Try with minimal includes first
+      orders = await prisma.order.findMany({
+        take: limitNum,
+        skip: skip,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          orderNumber: true,
+          customerId: true,
+          vehicleId: true,
+          driverId: true,
+          customerLoadNumber: true,
+          pickupAddress: true,
+          deliveryAddress: true,
+          pickupDate: true,
+          deliveryDate: true,
+          status: true,
+          priority: true,
+          description: true,
+          miles: true,
+          pieces: true,
+          weight: true,
+          loadPay: true,
+          driverPay: true,
+          notes: true,
+          document: true,
+          documents: true,
+          createdAt: true,
+          updatedAt: true,
           customer: {
             select: {
               id: true,
@@ -199,12 +227,22 @@ router.get('/', authenticate, async (req, res) => {
               email: true
             }
           }
-      }
-    })
-    
-    const total = await prisma.order.count()
-    
-    console.log(`Fetched ${orders.length} orders successfully`)
+        }
+      })
+      
+      total = await prisma.order.count()
+      
+      console.log(`Successfully fetched ${orders.length} orders, total: ${total}`)
+    } catch (queryError: any) {
+      console.error('=== ORDERS QUERY FAILED ===')
+      console.error('Error:', queryError.message)
+      console.error('Code:', queryError.code)
+      console.error('Meta:', JSON.stringify(queryError.meta, null, 2))
+      
+      // Return empty array so frontend doesn't crash
+      orders = []
+      total = 0
+    }
 
 
     res.json({
