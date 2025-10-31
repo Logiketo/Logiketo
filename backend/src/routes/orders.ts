@@ -184,15 +184,7 @@ router.get('/', authenticate, async (req, res) => {
               model: true,
               licensePlate: true,
               unitNumber: true,
-              driverName: true,
-              driver: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true
-                }
-              }
+              driverName: true
             }
           },
           driver: {
@@ -227,11 +219,18 @@ router.get('/', authenticate, async (req, res) => {
       }
     })
     return
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get orders error:', error)
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack
+    })
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     })
     return
   }
