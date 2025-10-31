@@ -110,69 +110,8 @@ router.get('/', authenticate, async (req, res) => {
 
     console.log('Parsed params:', { pageNum, limitNum, skip })
 
-    const where: any = {}
-    
-    if (search) {
-      where.OR = [
-        { orderNumber: { contains: search as string, mode: 'insensitive' as const } },
-        { pickupAddress: { contains: search as string, mode: 'insensitive' as const } },
-        { deliveryAddress: { contains: search as string, mode: 'insensitive' as const } },
-        { description: { contains: search as string, mode: 'insensitive' as const } },
-        { customer: { name: { contains: search as string, mode: 'insensitive' as const } } }
-      ]
-    }
-
-    if (orderNumber) {
-      where.orderNumber = { contains: orderNumber as string, mode: 'insensitive' as const }
-    }
-
-    if (customerLoad) {
-      where.AND = [
-        ...(where.AND || []),
-        {
-          OR: [
-            { customer: { name: { contains: customerLoad as string, mode: 'insensitive' as const } } },
-            { customerLoadNumber: { contains: customerLoad as string, mode: 'insensitive' as const } }
-          ]
-        }
-      ]
-    }
-
-    if (unitDriver) {
-      where.AND = [
-        ...(where.AND || []),
-        {
-          OR: [
-            { vehicle: { unitNumber: { contains: unitDriver as string, mode: 'insensitive' as const } } },
-            { vehicle: { driverName: { contains: unitDriver as string, mode: 'insensitive' as const } } },
-            { driver: { firstName: { contains: unitDriver as string, mode: 'insensitive' as const } } },
-            { driver: { lastName: { contains: unitDriver as string, mode: 'insensitive' as const } } }
-          ]
-        }
-      ]
-    }
-
-    // Status and priority filtering disabled to prevent enum type errors
-    // The database columns may be TEXT or enum types, causing Prisma comparison issues
-    if (status) {
-      console.log('Status filter received but disabled:', status)
-      // where.status = status // Disabled to prevent enum errors
-    }
-
-    if (priority) {
-      console.log('Priority filter received but disabled:', priority)
-      // where.priority = priority // Disabled to prevent enum errors
-    }
-
-    if (customerId) {
-      where.customerId = customerId
-    }
-
-    if (vehicleId) {
-      where.vehicleId = vehicleId
-    }
-
     // Use raw SQL query to bypass Prisma enum type issues completely
+    // ALL filtering is done in raw SQL to avoid Prisma enum comparison errors
     console.log('=== GET ORDERS - Using Raw SQL Query ===')
     
     let orders: any[] = []
@@ -181,36 +120,56 @@ router.get('/', authenticate, async (req, res) => {
     try {
       console.log('Attempting raw SQL query with params:', { limitNum, skip })
       
-      // Build WHERE clause for raw SQL if needed (for search, orderNumber, etc.)
+      // Build WHERE clause for raw SQL
       let whereConditions: string[] = []
       
+      // Search filter (multiple fields)
+      if (search) {
+        whereConditions.push(`(
+          LOWER(o."orderNumber") LIKE LOWER('%${search.replace(/'/g, "''")}%') OR
+          LOWER(o."pickupAddress") LIKE LOWER('%${search.replace(/'/g, "''")}%') OR
+          LOWER(o."deliveryAddress") LIKE LOWER('%${search.replace(/'/g, "''")}%') OR
+          LOWER(o.description) LIKE LOWER('%${search.replace(/'/g, "''")}%') OR
+          LOWER(c.name) LIKE LOWER('%${search.replace(/'/g, "''")}%')
+        )`)
+      }
+      
       if (orderNumber) {
-        whereConditions.push(`LOWER(o."orderNumber") LIKE LOWER('%${orderNumber}%')`)
+        whereConditions.push(`LOWER(o."orderNumber") LIKE LOWER('%${orderNumber.replace(/'/g, "''")}%')`)
       }
       
       if (customerLoad) {
-        whereConditions.push(`(LOWER(c.name) LIKE LOWER('%${customerLoad}%') OR LOWER(o."customerLoadNumber") LIKE LOWER('%${customerLoad}%'))`)
+        whereConditions.push(`(LOWER(c.name) LIKE LOWER('%${customerLoad.replace(/'/g, "''")}%') OR LOWER(o."customerLoadNumber") LIKE LOWER('%${customerLoad.replace(/'/g, "''")}%'))`)
+      }
+      
+      if (unitDriver) {
+        whereConditions.push(`(
+          LOWER(v."unitNumber") LIKE LOWER('%${unitDriver.replace(/'/g, "''")}%') OR
+          LOWER(v."driverName") LIKE LOWER('%${unitDriver.replace(/'/g, "''")}%') OR
+          LOWER(u."firstName") LIKE LOWER('%${unitDriver.replace(/'/g, "''")}%') OR
+          LOWER(u."lastName") LIKE LOWER('%${unitDriver.replace(/'/g, "''")}%')
+        )`)
       }
       
       if (status) {
         // Handle status filtering in raw SQL
-        const statusArray = status.split(',').map(s => s.trim())
+        const statusArray = status.split(',').map(s => s.trim().replace(/'/g, "''"))
         const statusConditions = statusArray.map(s => `CAST(o.status AS TEXT) = '${s}'`).join(' OR ')
         whereConditions.push(`(${statusConditions})`)
       }
       
       if (priority) {
-        const priorityArray = priority.split(',').map(p => p.trim())
+        const priorityArray = priority.split(',').map(p => p.trim().replace(/'/g, "''"))
         const priorityConditions = priorityArray.map(p => `CAST(o.priority AS TEXT) = '${p}'`).join(' OR ')
         whereConditions.push(`(${priorityConditions})`)
       }
       
       if (customerId) {
-        whereConditions.push(`o."customerId" = '${customerId}'`)
+        whereConditions.push(`o."customerId" = '${customerId.replace(/'/g, "''")}'`)
       }
       
       if (vehicleId) {
-        whereConditions.push(`o."vehicleId" = '${vehicleId}'`)
+        whereConditions.push(`o."vehicleId" = '${vehicleId.replace(/'/g, "''")}'`)
       }
       
       const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
