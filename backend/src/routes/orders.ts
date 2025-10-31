@@ -174,61 +174,76 @@ router.get('/', authenticate, async (req, res) => {
     
     try {
       // Try with minimal includes first
-      orders = await prisma.order.findMany({
-        take: limitNum,
-        skip: skip,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          orderNumber: true,
-          customerId: true,
-          vehicleId: true,
-          driverId: true,
-          customerLoadNumber: true,
-          pickupAddress: true,
-          deliveryAddress: true,
-          pickupDate: true,
-          deliveryDate: true,
-          status: true,
-          priority: true,
-          description: true,
-          miles: true,
-          pieces: true,
-          weight: true,
-          loadPay: true,
-          driverPay: true,
-          notes: true,
-          document: true,
-          documents: true,
-          createdAt: true,
-          updatedAt: true,
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            }
-          },
-          vehicle: {
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              licensePlate: true,
-              unitNumber: true,
-              driverName: true
-            }
-          },
-          driver: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true
-            }
-          }
-        }
-      })
+      // Use raw query to avoid enum type issues completely
+      const rawOrders = await prisma.$queryRaw`
+        SELECT 
+          o.*,
+          c.id as "customer_id",
+          c.name as "customer_name", 
+          c.email as "customer_email",
+          v.id as "vehicle_id",
+          v.make as "vehicle_make",
+          v.model as "vehicle_model",
+          v."licensePlate" as "vehicle_licensePlate",
+          v."unitNumber" as "vehicle_unitNumber",
+          v."driverName" as "vehicle_driverName",
+          u.id as "driver_id",
+          u."firstName" as "driver_firstName",
+          u."lastName" as "driver_lastName",
+          u.email as "driver_email"
+        FROM orders o
+        LEFT JOIN customers c ON o."customerId" = c.id
+        LEFT JOIN vehicles v ON o."vehicleId" = v.id
+        LEFT JOIN users u ON o."driverId" = u.id
+        ORDER BY o."createdAt" DESC
+        LIMIT ${limitNum} OFFSET ${skip}
+      ` as any[]
+      
+      // Transform raw results to match expected format
+      orders = rawOrders.map((row: any) => ({
+        id: row.id,
+        orderNumber: row.orderNumber,
+        customerId: row.customerId,
+        vehicleId: row.vehicleId,
+        driverId: row.driverId,
+        customerLoadNumber: row.customerLoadNumber,
+        pickupAddress: row.pickupAddress,
+        deliveryAddress: row.deliveryAddress,
+        pickupDate: row.pickupDate,
+        deliveryDate: row.deliveryDate,
+        status: row.status,
+        priority: row.priority,
+        description: row.description,
+        miles: row.miles ? parseFloat(row.miles) : null,
+        pieces: row.pieces ? parseInt(row.pieces) : null,
+        weight: row.weight ? parseFloat(row.weight) : null,
+        loadPay: row.loadPay ? parseFloat(row.loadPay) : null,
+        driverPay: row.driverPay ? parseFloat(row.driverPay) : null,
+        notes: row.notes,
+        document: row.document,
+        documents: row.documents,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        customer: row.customer_id ? {
+          id: row.customer_id,
+          name: row.customer_name,
+          email: row.customer_email
+        } : null,
+        vehicle: row.vehicle_id ? {
+          id: row.vehicle_id,
+          make: row.vehicle_make,
+          model: row.vehicle_model,
+          licensePlate: row.vehicle_licensePlate,
+          unitNumber: row.vehicle_unitNumber,
+          driverName: row.vehicle_driverName
+        } : null,
+        driver: row.driver_id ? {
+          id: row.driver_id,
+          firstName: row.driver_firstName,
+          lastName: row.driver_lastName,
+          email: row.driver_email
+        } : null
+      }))
       
       total = await prisma.order.count()
       
