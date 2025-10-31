@@ -276,7 +276,16 @@ router.get('/', authenticate, async (req, res) => {
         } : null
       }))
       
-      total = await prisma.order.count()
+      // Get total count using raw SQL to avoid enum issues
+      try {
+        const countResult = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*)::int as count FROM orders
+        `) as any[]
+        total = countResult[0]?.count || 0
+      } catch (countError: any) {
+        console.error('Count query failed, using orders length:', countError.message)
+        total = orders.length // Fallback to orders length
+      }
       
       console.log(`Successfully fetched ${orders.length} orders, total: ${total}`)
     } catch (queryError: any) {

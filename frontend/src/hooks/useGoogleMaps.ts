@@ -12,8 +12,15 @@ export const useGoogleMaps = () => {
   useEffect(() => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
     
+    console.log('🔑 Google Maps API Key check:', {
+      hasKey: !!apiKey,
+      keyPrefix: apiKey ? apiKey.substring(0, 10) + '...' : 'none',
+      env: import.meta.env.MODE
+    })
+    
     if (!apiKey) {
-      setError('Google Maps API key not found')
+      console.error('❌ Google Maps API key not found in environment variables')
+      setError('Google Maps API key not found. Please add VITE_GOOGLE_MAPS_API_KEY to Vercel environment variables.')
       return
     }
 
