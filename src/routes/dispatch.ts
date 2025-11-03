@@ -26,45 +26,109 @@ const updateDispatchStatusSchema = z.object({
 // Get dispatch dashboard data
 router.get('/dashboard', authenticate, async (req, res) => {
   try {
+    // Use raw SQL queries to avoid enum type issues
     const [
-      pendingOrders,
-      activeOrders,
+      pendingOrdersRaw,
+      activeOrdersRaw,
       availableVehicles,
       availableDrivers,
-      recentDispatches
+      recentDispatchesRaw
     ] = await Promise.all([
-      // Pending orders (ready for dispatch)
-      prisma.order.findMany({
-        where: { status: 'PENDING' },
-        include: {
-          customer: true,
-          vehicle: {
-            include: { driver: true }
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 10
-      }),
+      // Pending orders (ready for dispatch) - using raw SQL
+      prisma.$queryRawUnsafe(`
+        SELECT 
+          o.*,
+          CAST(o.status AS TEXT) as status,
+          CAST(o.priority AS TEXT) as priority,
+          json_build_object(
+            'id', c.id,
+            'name', c.name,
+            'email', c.email,
+            'phone', c.phone,
+            'address', c.address
+          ) as customer,
+          CASE 
+            WHEN v.id IS NOT NULL THEN json_build_object(
+              'id', v.id,
+              'make', v.make,
+              'model', v.model,
+              'licensePlate', v."licensePlate",
+              'driver', CASE 
+                WHEN u.id IS NOT NULL THEN json_build_object(
+                  'id', u.id,
+                  'firstName', u."firstName",
+                  'lastName', u."lastName",
+                  'email', u.email
+                )
+                ELSE NULL
+              END
+            )
+            ELSE NULL
+          END as vehicle
+        FROM orders o
+        LEFT JOIN customers c ON o."customerId" = c.id
+        LEFT JOIN vehicles v ON o."vehicleId" = v.id
+        LEFT JOIN users u ON v."driverId" = u.id
+        WHERE CAST(o.status AS TEXT) = 'PENDING'
+        ORDER BY o."createdAt" DESC
+        LIMIT 10
+      `) as Promise<any[]>,
 
-      // Active orders (in progress)
-      prisma.order.findMany({
-        where: { 
-          status: { 
-            in: ['ASSIGNED', 'IN_TRANSIT'] 
-          } 
-        },
-        include: {
-          customer: true,
-          vehicle: {
-            include: { driver: true }
-          },
-          trackingEvents: {
-            orderBy: { timestamp: 'desc' },
-            take: 1
-          }
-        },
-        orderBy: { updatedAt: 'desc' }
-      }),
+      // Active orders (in progress) - using raw SQL
+      prisma.$queryRawUnsafe(`
+        SELECT 
+          o.*,
+          CAST(o.status AS TEXT) as status,
+          CAST(o.priority AS TEXT) as priority,
+          json_build_object(
+            'id', c.id,
+            'name', c.name,
+            'email', c.email,
+            'phone', c.phone,
+            'address', c.address
+          ) as customer,
+          CASE 
+            WHEN v.id IS NOT NULL THEN json_build_object(
+              'id', v.id,
+              'make', v.make,
+              'model', v.model,
+              'licensePlate', v."licensePlate",
+              'driver', CASE 
+                WHEN u.id IS NOT NULL THEN json_build_object(
+                  'id', u.id,
+                  'firstName', u."firstName",
+                  'lastName', u."lastName",
+                  'email', u.email
+                )
+                ELSE NULL
+              END
+            )
+            ELSE NULL
+          END as vehicle,
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', te.id,
+                'status', CAST(te.status AS TEXT),
+                'location', te.location,
+                'timestamp', te.timestamp,
+                'notes', te.notes
+              )
+            )
+            FROM (
+              SELECT * FROM tracking_events
+              WHERE "orderId" = o.id
+              ORDER BY timestamp DESC
+              LIMIT 1
+            ) te
+          ) as "trackingEvents"
+        FROM orders o
+        LEFT JOIN customers c ON o."customerId" = c.id
+        LEFT JOIN vehicles v ON o."vehicleId" = v.id
+        LEFT JOIN users u ON v."driverId" = u.id
+        WHERE CAST(o.status AS TEXT) IN ('ASSIGNED', 'IN_TRANSIT')
+        ORDER BY o."updatedAt" DESC
+      `) as Promise<any[]>,
 
       // Available vehicles
       prisma.vehicle.findMany({
@@ -85,27 +149,84 @@ router.get('/dashboard', authenticate, async (req, res) => {
         orderBy: { firstName: 'asc' }
       }),
 
-      // Recent dispatches
-      prisma.order.findMany({
-        where: { 
-          status: { 
-            in: ['ASSIGNED', 'IN_TRANSIT', 'DELIVERED'] 
-          } 
-        },
-        include: {
-          customer: true,
-          vehicle: {
-            include: { driver: true }
-          },
-          trackingEvents: {
-            orderBy: { timestamp: 'desc' },
-            take: 1
-          }
-        },
-        orderBy: { updatedAt: 'desc' },
-        take: 20
-      })
+      // Recent dispatches - using raw SQL
+      prisma.$queryRawUnsafe(`
+        SELECT 
+          o.*,
+          CAST(o.status AS TEXT) as status,
+          CAST(o.priority AS TEXT) as priority,
+          json_build_object(
+            'id', c.id,
+            'name', c.name,
+            'email', c.email,
+            'phone', c.phone,
+            'address', c.address
+          ) as customer,
+          CASE 
+            WHEN v.id IS NOT NULL THEN json_build_object(
+              'id', v.id,
+              'make', v.make,
+              'model', v.model,
+              'licensePlate', v."licensePlate",
+              'driver', CASE 
+                WHEN u.id IS NOT NULL THEN json_build_object(
+                  'id', u.id,
+                  'firstName', u."firstName",
+                  'lastName', u."lastName",
+                  'email', u.email
+                )
+                ELSE NULL
+              END
+            )
+            ELSE NULL
+          END as vehicle,
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', te.id,
+                'status', CAST(te.status AS TEXT),
+                'location', te.location,
+                'timestamp', te.timestamp,
+                'notes', te.notes
+              )
+            )
+            FROM (
+              SELECT * FROM tracking_events
+              WHERE "orderId" = o.id
+              ORDER BY timestamp DESC
+              LIMIT 1
+            ) te
+          ) as "trackingEvents"
+        FROM orders o
+        LEFT JOIN customers c ON o."customerId" = c.id
+        LEFT JOIN vehicles v ON o."vehicleId" = v.id
+        LEFT JOIN users u ON v."driverId" = u.id
+        WHERE CAST(o.status AS TEXT) IN ('ASSIGNED', 'IN_TRANSIT', 'DELIVERED')
+        ORDER BY o."updatedAt" DESC
+        LIMIT 20
+      `) as Promise<any[]>
     ])
+
+    // Transform raw SQL results to match expected format
+    const pendingOrders = (pendingOrdersRaw as any[]).map((row: any) => ({
+      ...row,
+      customer: row.customer,
+      vehicle: row.vehicle
+    }))
+
+    const activeOrders = (activeOrdersRaw as any[]).map((row: any) => ({
+      ...row,
+      customer: row.customer,
+      vehicle: row.vehicle,
+      trackingEvents: row.trackingEvents || []
+    }))
+
+    const recentDispatches = (recentDispatchesRaw as any[]).map((row: any) => ({
+      ...row,
+      customer: row.customer,
+      vehicle: row.vehicle,
+      trackingEvents: row.trackingEvents || []
+    }))
 
     return res.json({
       success: true,
@@ -138,17 +259,37 @@ router.post('/assign', authenticate, async (req, res) => {
     const validatedData = assignOrderSchema.parse(req.body)
     const { orderId, vehicleId, driverId } = validatedData
 
-    // Check if order exists and is pending
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      include: { vehicle: true }
-    })
+    // Check if order exists and is pending - using raw SQL to avoid enum issues
+    const orderRaw = await prisma.$queryRawUnsafe(`
+      SELECT 
+        o.*,
+        CAST(o.status AS TEXT) as status,
+        CAST(o.priority AS TEXT) as priority,
+        CASE 
+          WHEN v.id IS NOT NULL THEN json_build_object(
+            'id', v.id,
+            'make', v.make,
+            'model', v.model,
+            'licensePlate', v."licensePlate",
+            'status', CAST(v.status AS TEXT)
+          )
+          ELSE NULL
+        END as vehicle
+      FROM orders o
+      LEFT JOIN vehicles v ON o."vehicleId" = v.id
+      WHERE o.id = '${orderId.replace(/'/g, "''")}'
+    `) as any[]
 
-    if (!order) {
+    if (!orderRaw || orderRaw.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Order not found'
       })
+    }
+
+    const order = {
+      ...orderRaw[0],
+      vehicle: orderRaw[0].vehicle
     }
 
     if (order.status !== 'PENDING') {
@@ -205,21 +346,57 @@ router.post('/assign', authenticate, async (req, res) => {
       })
     }
 
-    // Update order status and assign vehicle
-    const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: 'ASSIGNED',
-        vehicleId,
-        updatedAt: new Date()
-      },
-      include: {
-        customer: true,
-        vehicle: {
-          include: { driver: true }
-        }
-      }
-    })
+    // Update order status and assign vehicle - using raw SQL for update
+    await prisma.$executeRawUnsafe(`
+      UPDATE orders 
+      SET status = 'ASSIGNED'::"OrderStatus",
+          "vehicleId" = '${vehicleId.replace(/'/g, "''")}',
+          "updatedAt" = NOW()
+      WHERE id = '${orderId.replace(/'/g, "''")}'
+    `)
+
+    // Fetch updated order with relations using raw SQL
+    const updatedOrderRaw = await prisma.$queryRawUnsafe(`
+      SELECT 
+        o.*,
+        CAST(o.status AS TEXT) as status,
+        CAST(o.priority AS TEXT) as priority,
+        json_build_object(
+          'id', c.id,
+          'name', c.name,
+          'email', c.email,
+          'phone', c.phone
+        ) as customer,
+        CASE 
+          WHEN v.id IS NOT NULL THEN json_build_object(
+            'id', v.id,
+            'make', v.make,
+            'model', v.model,
+            'licensePlate', v."licensePlate",
+            'driver', CASE 
+              WHEN u.id IS NOT NULL THEN json_build_object(
+                'id', u.id,
+                'firstName', u."firstName",
+                'lastName', u."lastName",
+                'email', u.email
+              )
+              ELSE NULL
+            END
+          )
+          ELSE NULL
+        END as vehicle
+      FROM orders o
+      LEFT JOIN customers c ON o."customerId" = c.id
+      LEFT JOIN vehicles v ON o."vehicleId" = v.id
+      LEFT JOIN users u ON v."driverId" = u.id
+      WHERE o.id = '${orderId.replace(/'/g, "''")}'
+    `) as any[]
+
+    const updatedOrder = {
+      ...updatedOrderRaw[0],
+      customer: updatedOrderRaw[0].customer,
+      vehicle: updatedOrderRaw[0].vehicle
+    }
 
     // Create tracking event
     await prisma.trackingEvent.create({
@@ -261,32 +438,75 @@ router.patch('/:orderId/status', authenticate, async (req, res) => {
     const validatedData = updateDispatchStatusSchema.parse(req.body)
     const { status, notes, location } = validatedData
 
-    // Check if order exists
-    const order = await prisma.order.findUnique({
-      where: { id: orderId }
-    })
+    // Check if order exists - using raw SQL to avoid enum issues
+    const orderRaw = await prisma.$queryRawUnsafe(`
+      SELECT 
+        o.*,
+        CAST(o.status AS TEXT) as status,
+        "vehicleId"
+      FROM orders o
+      WHERE o.id = '${orderId.replace(/'/g, "''")}'
+    `) as any[]
 
-    if (!order) {
+    if (!orderRaw || orderRaw.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Order not found'
       })
     }
 
-    // Update order status
-    const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status,
-        updatedAt: new Date()
-      },
-      include: {
-        customer: true,
-        vehicle: {
-          include: { driver: true }
-        }
-      }
-    })
+    const order = orderRaw[0]
+
+    // Update order status - using raw SQL
+    await prisma.$executeRawUnsafe(`
+      UPDATE orders 
+      SET status = '${status.replace(/'/g, "''")}'::"OrderStatus",
+          "updatedAt" = NOW()
+      WHERE id = '${orderId.replace(/'/g, "''")}'
+    `)
+
+    // Fetch updated order with relations using raw SQL
+    const updatedOrderRaw = await prisma.$queryRawUnsafe(`
+      SELECT 
+        o.*,
+        CAST(o.status AS TEXT) as status,
+        CAST(o.priority AS TEXT) as priority,
+        json_build_object(
+          'id', c.id,
+          'name', c.name,
+          'email', c.email,
+          'phone', c.phone
+        ) as customer,
+        CASE 
+          WHEN v.id IS NOT NULL THEN json_build_object(
+            'id', v.id,
+            'make', v.make,
+            'model', v.model,
+            'licensePlate', v."licensePlate",
+            'driver', CASE 
+              WHEN u.id IS NOT NULL THEN json_build_object(
+                'id', u.id,
+                'firstName', u."firstName",
+                'lastName', u."lastName",
+                'email', u.email
+              )
+              ELSE NULL
+            END
+          )
+          ELSE NULL
+        END as vehicle
+      FROM orders o
+      LEFT JOIN customers c ON o."customerId" = c.id
+      LEFT JOIN vehicles v ON o."vehicleId" = v.id
+      LEFT JOIN users u ON v."driverId" = u.id
+      WHERE o.id = '${orderId.replace(/'/g, "''")}'
+    `) as any[]
+
+    const updatedOrder = {
+      ...updatedOrderRaw[0],
+      customer: updatedOrderRaw[0].customer,
+      vehicle: updatedOrderRaw[0].vehicle
+    }
 
     // Create tracking event
     const trackingData: any = {
@@ -305,11 +525,12 @@ router.patch('/:orderId/status', authenticate, async (req, res) => {
     })
 
     // If order is delivered, mark vehicle as available
-    if (status === 'DELIVERED') {
-      await prisma.vehicle.update({
-        where: { id: order.vehicleId! },
-        data: { status: 'AVAILABLE' }
-      })
+    if (status === 'DELIVERED' && order.vehicleId) {
+      await prisma.$executeRawUnsafe(`
+        UPDATE vehicles 
+        SET status = 'AVAILABLE'::"VehicleStatus"
+        WHERE id = '${order.vehicleId.replace(/'/g, "''")}'
+      `)
     }
 
     return res.json({
@@ -375,21 +596,46 @@ router.get('/track/:orderId', authenticate, async (req, res) => {
 // Get available vehicles for dispatch
 router.get('/vehicles/available', authenticate, async (req, res) => {
   try {
-    const vehicles = await prisma.vehicle.findMany({
-      where: { 
-          status: 'AVAILABLE',
-        driver: { isNot: null }
-      },
-      include: { 
-        driver: true,
-        orders: {
-          where: {
-            status: { in: ['ASSIGNED', 'IN_TRANSIT'] }
-          }
-        }
-      },
-      orderBy: { updatedAt: 'desc' }
-    })
+    // Use raw SQL to avoid enum issues with orders.status
+    const vehiclesRaw = await prisma.$queryRawUnsafe(`
+      SELECT 
+        v.*,
+        CAST(v.status AS TEXT) as status,
+        CASE 
+          WHEN u.id IS NOT NULL THEN json_build_object(
+            'id', u.id,
+            'firstName', u."firstName",
+            'lastName', u."lastName",
+            'email', u.email
+          )
+          ELSE NULL
+        END as driver,
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', o.id,
+              'orderNumber', o."orderNumber",
+              'status', CAST(o.status AS TEXT),
+              'pickupAddress', o."pickupAddress",
+              'deliveryAddress', o."deliveryAddress"
+            )
+          )
+          FROM orders o
+          WHERE o."vehicleId" = v.id 
+            AND CAST(o.status AS TEXT) IN ('ASSIGNED', 'IN_TRANSIT')
+        ) as orders
+      FROM vehicles v
+      LEFT JOIN users u ON v."driverId" = u.id
+      WHERE CAST(v.status AS TEXT) = 'AVAILABLE'
+        AND v."driverId" IS NOT NULL
+      ORDER BY v."updatedAt" DESC
+    `) as any[]
+
+    const vehicles = vehiclesRaw.map((row: any) => ({
+      ...row,
+      driver: row.driver,
+      orders: row.orders || []
+    }))
 
     return res.json({
       success: true,
