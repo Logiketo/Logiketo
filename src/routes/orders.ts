@@ -41,14 +41,14 @@ const generateOrderNumber = async (): Promise<string> => {
   
   while (attempts < maxAttempts) {
     // Find the highest order number that is a simple number (1, 2, 3, etc.)
-    const allOrders = await prisma.order.findMany({
-      select: {
-        orderNumber: true
-      },
-      orderBy: {
-        orderNumber: 'desc'
-      }
-    })
+    // Use raw SQL to avoid enum type issues
+    const allOrdersRaw = await prisma.$queryRawUnsafe(`
+      SELECT "orderNumber" 
+      FROM orders 
+      ORDER BY "orderNumber" DESC
+    `) as Array<{ orderNumber: string }>
+    
+    const allOrders = allOrdersRaw.map((row) => ({ orderNumber: row.orderNumber }))
     
     // Filter for simple numeric order numbers only
     const numericOrders = allOrders.filter((order: any) => {
@@ -92,130 +92,188 @@ router.get('/', authenticate, async (req, res) => {
       page = '1', 
       limit = '10', 
       search = '', 
-      orderNumber = '',
-      customerLoad = '',
-      unitDriver = '',
+      orderNumber = '', 
+      customerLoad = '', 
+      unitDriver = '', 
       status = '', 
-      priority = '',
-      customerId = '',
-      vehicleId = ''
-    } = req.query
+      priority = '', 
+      customerId = '', 
+      vehicleId = '' 
+    } = req.query as {
+      page?: string
+      limit?: string
+      search?: string
+      orderNumber?: string
+      customerLoad?: string
+      unitDriver?: string
+      status?: string
+      priority?: string
+      customerId?: string
+      vehicleId?: string
+    }
     const pageNum = parseInt(page as string)
     const limitNum = parseInt(limit as string)
     const skip = (pageNum - 1) * limitNum
 
-    const where: any = {}
+    // Use raw SQL to avoid enum type issues - build WHERE clause for raw SQL
+    let whereConditions: string[] = []
     
     if (search) {
-      where.OR = [
-        { orderNumber: { contains: search as string, mode: 'insensitive' as const } },
-        { pickupAddress: { contains: search as string, mode: 'insensitive' as const } },
-        { deliveryAddress: { contains: search as string, mode: 'insensitive' as const } },
-        { description: { contains: search as string, mode: 'insensitive' as const } },
-        { customer: { name: { contains: search as string, mode: 'insensitive' as const } } }
-      ]
+      const searchStr = String(search)
+      whereConditions.push(`(
+        LOWER(o."orderNumber") LIKE LOWER('%${searchStr.replace(/'/g, "''")}%') OR
+        LOWER(o."pickupAddress") LIKE LOWER('%${searchStr.replace(/'/g, "''")}%') OR
+        LOWER(o."deliveryAddress") LIKE LOWER('%${searchStr.replace(/'/g, "''")}%') OR
+        LOWER(o.description) LIKE LOWER('%${searchStr.replace(/'/g, "''")}%') OR
+        LOWER(c.name) LIKE LOWER('%${searchStr.replace(/'/g, "''")}%')
+      )`)
     }
-
+    
     if (orderNumber) {
-      where.orderNumber = { contains: orderNumber as string, mode: 'insensitive' as const }
+      const orderNumberStr = String(orderNumber)
+      whereConditions.push(`LOWER(o."orderNumber") LIKE LOWER('%${orderNumberStr.replace(/'/g, "''")}%')`)
     }
-
+    
     if (customerLoad) {
-      where.AND = [
-        ...(where.AND || []),
-        {
-          OR: [
-            { customer: { name: { contains: customerLoad as string, mode: 'insensitive' as const } } },
-            { customerLoadNumber: { contains: customerLoad as string, mode: 'insensitive' as const } }
-          ]
-        }
-      ]
+      const customerLoadStr = String(customerLoad)
+      whereConditions.push(`(LOWER(c.name) LIKE LOWER('%${customerLoadStr.replace(/'/g, "''")}%') OR LOWER(o."customerLoadNumber") LIKE LOWER('%${customerLoadStr.replace(/'/g, "''")}%'))`)
     }
-
+    
     if (unitDriver) {
-      where.AND = [
-        ...(where.AND || []),
-        {
-          OR: [
-            { vehicle: { unitNumber: { contains: unitDriver as string, mode: 'insensitive' as const } } },
-            { vehicle: { driverName: { contains: unitDriver as string, mode: 'insensitive' as const } } },
-            { driver: { firstName: { contains: unitDriver as string, mode: 'insensitive' as const } } },
-            { driver: { lastName: { contains: unitDriver as string, mode: 'insensitive' as const } } }
-          ]
-        }
-      ]
+      const unitDriverStr = String(unitDriver)
+      whereConditions.push(`(
+        LOWER(v."unitNumber") LIKE LOWER('%${unitDriverStr.replace(/'/g, "''")}%') OR
+        LOWER(v."driverName") LIKE LOWER('%${unitDriverStr.replace(/'/g, "''")}%') OR
+        LOWER(u."firstName") LIKE LOWER('%${unitDriverStr.replace(/'/g, "''")}%') OR
+        LOWER(u."lastName") LIKE LOWER('%${unitDriverStr.replace(/'/g, "''")}%')
+      )`)
     }
-
+    
     if (status) {
-      // Handle comma-separated status values (e.g., "ASSIGNED,IN_TRANSIT")
-      const statusArray = (status as string).split(',')
-      if (statusArray.length === 1) {
-        where.status = status
-      } else {
-        where.status = { in: statusArray }
-      }
+      const statusStr = String(status)
+      const statusArray = statusStr.split(',').map((s: string) => s.trim().replace(/'/g, "''"))
+      const statusConditions = statusArray.map((s: string) => `CAST(o.status AS TEXT) = '${s}'`).join(' OR ')
+      whereConditions.push(`(${statusConditions})`)
     }
-
+    
     if (priority) {
-      where.priority = priority
+      const priorityStr = String(priority)
+      whereConditions.push(`CAST(o.priority AS TEXT) = '${priorityStr.replace(/'/g, "''")}'`)
     }
-
+    
     if (customerId) {
-      where.customerId = customerId
+      whereConditions.push(`o."customerId" = '${String(customerId).replace(/'/g, "''")}'`)
     }
-
+    
     if (vehicleId) {
-      where.vehicleId = vehicleId
+      whereConditions.push(`o."vehicleId" = '${String(vehicleId).replace(/'/g, "''")}'`)
     }
-
-    const [orders, total] = await Promise.all([
-      prisma.order.findMany({
-        where,
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            }
-          },
-          vehicle: {
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              licensePlate: true,
-              unitNumber: true,
-              driverName: true,
-              driver: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true
-                }
-              }
-            }
-          },
-          driver: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true
-            }
-          },
-          trackingEvents: {
-            orderBy: { timestamp: 'desc' },
-            take: 1
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limitNum
-      }),
-      prisma.order.count({ where })
+    
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
+    
+    const [ordersRaw, totalRaw] = await Promise.all([
+      prisma.$queryRawUnsafe(`
+        SELECT 
+          o.id,
+          o."orderNumber",
+          o."customerId",
+          o."vehicleId",
+          o."driverId",
+          o."customerLoadNumber",
+          o."pickupAddress",
+          o."deliveryAddress",
+          o."pickupDate",
+          o."deliveryDate",
+          COALESCE(CAST(o.status AS TEXT), 'PENDING') as status,
+          COALESCE(CAST(o.priority AS TEXT), 'NORMAL') as priority,
+          o.description,
+          o.miles,
+          o.pieces,
+          o.weight,
+          o."loadPay",
+          o."driverPay",
+          o.notes,
+          o.document,
+          o.documents,
+          o."createdAt",
+          o."updatedAt",
+          c.id as customer_id,
+          c.name as customer_name, 
+          c.email as customer_email,
+          v.id as vehicle_id,
+          v.make as vehicle_make,
+          v.model as vehicle_model,
+          v."licensePlate" as vehicle_licensePlate,
+          v."unitNumber" as vehicle_unitNumber,
+          v."driverName" as vehicle_driverName,
+          u.id as driver_id,
+          u."firstName" as driver_firstName,
+          u."lastName" as driver_lastName,
+          u.email as driver_email
+        FROM orders o
+        LEFT JOIN customers c ON o."customerId" = c.id
+        LEFT JOIN vehicles v ON o."vehicleId" = v.id
+        LEFT JOIN users u ON o."driverId" = u.id
+        ${whereClause}
+        ORDER BY o."createdAt" DESC
+        LIMIT ${limitNum} OFFSET ${skip}
+      `) as Promise<any[]>,
+      prisma.$queryRawUnsafe(`
+        SELECT COUNT(*)::int as count 
+        FROM orders o
+        LEFT JOIN customers c ON o."customerId" = c.id
+        ${whereClause}
+      `) as Promise<any[]>
     ])
+    
+    const orders = ordersRaw.map((row: any) => ({
+      id: row.id,
+      orderNumber: row.orderNumber,
+      customerId: row.customerId,
+      vehicleId: row.vehicleId,
+      driverId: row.driverId,
+      customerLoadNumber: row.customerLoadNumber,
+      pickupAddress: row.pickupAddress,
+      deliveryAddress: row.deliveryAddress,
+      pickupDate: row.pickupDate,
+      deliveryDate: row.deliveryDate,
+      status: row.status,
+      priority: row.priority,
+      description: row.description,
+      miles: row.miles ? parseFloat(row.miles) : null,
+      pieces: row.pieces ? parseInt(row.pieces) : null,
+      weight: row.weight ? parseFloat(row.weight) : null,
+      loadPay: row.loadPay ? parseFloat(row.loadPay) : null,
+      driverPay: row.driverPay ? parseFloat(row.driverPay) : null,
+      notes: row.notes,
+      document: row.document,
+      documents: row.documents,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      customer: row.customer_id ? {
+        id: row.customer_id,
+        name: row.customer_name,
+        email: row.customer_email
+      } : null,
+      vehicle: row.vehicle_id ? {
+        id: row.vehicle_id,
+        make: row.vehicle_make,
+        model: row.vehicle_model,
+        licensePlate: row.vehicle_licensePlate,
+        unitNumber: row.vehicle_unitNumber,
+        driverName: row.vehicle_driverName
+      } : null,
+      driver: row.driver_id ? {
+        id: row.driver_id,
+        firstName: row.driver_firstName,
+        lastName: row.driver_lastName,
+        email: row.driver_email
+      } : null
+    }))
+    
+    const total = totalRaw[0]?.count || 0
+
+    // All queries now use raw SQL to avoid enum type issues
 
 
     res.json({
