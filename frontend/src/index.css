@@ -26,6 +26,16 @@
     .overflow-y-auto, .overflow-x-auto {
       -webkit-overflow-scrolling: touch;
     }
+    
+    /* Fix horizontal scroll white space - ensure background extends */
+    .overflow-x-auto {
+      background-color: inherit;
+    }
+    
+    /* Ensure parent containers extend on scroll */
+    main, .card {
+      min-width: 100%;
+    }
   }
 }
 

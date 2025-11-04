@@ -888,7 +888,7 @@ export default function Fleet() {
         </button>
       </div>
 
-      <div className="card p-4 sm:p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+      <div className="card p-4 sm:p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <div className="relative flex-1 sm:flex-none">
@@ -935,8 +935,9 @@ export default function Fleet() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <div className="overflow-x-auto -mx-4 sm:mx-0 bg-white dark:bg-gray-800" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="inline-block min-w-full align-middle">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" style={{ width: 'max-content' }}>
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
@@ -1012,6 +1013,7 @@ export default function Fleet() {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Pagination */}
