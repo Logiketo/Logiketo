@@ -1027,8 +1027,8 @@ export default function Orders() {
             </p>
             {!orderNumberSearch && !customerLoadSearch && !unitDriverSearch && !statusFilter && !priorityFilter && (
               <div className="mt-6">
-                <button onClick={handleAddNew} className="btn-primary">
-                  <Plus className="h-4 w-4 mr-2" />
+                <button onClick={handleAddNew} className="btn-primary min-h-[44px] px-4 py-2 text-base sm:text-sm">
+                  <Plus className="h-5 w-5 sm:h-4 sm:w-4 mr-2" />
                   New Order
                 </button>
               </div>
@@ -1036,7 +1036,7 @@ export default function Orders() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="overflow-x-auto -mx-4 sm:mx-0" style={{ WebkitOverflowScrolling: 'touch' }}>
               <div className="inline-block min-w-full align-middle">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
@@ -1250,14 +1250,14 @@ export default function Orders() {
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="btn-outline disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-outline disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] px-4 py-2"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(pagination.pages, prev + 1))}
                     disabled={currentPage === pagination.pages}
-                    className="btn-outline disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-outline disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] px-4 py-2"
                   >
                     Next
                   </button>

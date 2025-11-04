@@ -554,11 +554,62 @@ export default function MainLayout({ children }: MainLayoutProps) {
           )}
 
           {/* Page content */}
-          <main className={`${showSidebar ? "py-8" : ""} bg-gray-50 dark:bg-gray-900 min-h-screen`}>
+          <main className={`${showSidebar ? "py-8" : ""} bg-gray-50 dark:bg-gray-900 min-h-screen pb-20 md:pb-0`}>
             <div className={showSidebar ? "mx-auto max-w-7xl px-4 sm:px-6 lg:px-8" : ""}>
               {children}
             </div>
           </main>
+        </div>
+        
+        {/* Bottom Navigation Bar - Mobile Only */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg">
+          <div className="flex items-center justify-around h-16">
+            <Link
+              to="/myfleet"
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+                location.pathname.startsWith('/myfleet') || location.pathname.startsWith('/fleet') || 
+                location.pathname.startsWith('/employees') || location.pathname.startsWith('/customers')
+                  ? 'text-blue-600 dark:text-blue-400' 
+                  : 'text-gray-600 dark:text-gray-400'
+              }`}
+            >
+              <Truck className="h-5 w-5 mb-1" />
+              <span className="text-xs font-medium">Fleet</span>
+            </Link>
+            <Link
+              to="/dispatch"
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+                location.pathname.startsWith('/dispatch') || location.pathname.startsWith('/units')
+                  ? 'text-blue-600 dark:text-blue-400' 
+                  : 'text-gray-600 dark:text-gray-400'
+              }`}
+            >
+              <MapPin className="h-5 w-5 mb-1" />
+              <span className="text-xs font-medium">Dispatch</span>
+            </Link>
+            <Link
+              to="/orders"
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+                location.pathname.startsWith('/orders')
+                  ? 'text-blue-600 dark:text-blue-400' 
+                  : 'text-gray-600 dark:text-gray-400'
+              }`}
+            >
+              <Package className="h-5 w-5 mb-1" />
+              <span className="text-xs font-medium">Orders</span>
+            </Link>
+            <Link
+              to="/reports"
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+                location.pathname.startsWith('/reports') || location.pathname.startsWith('/plans')
+                  ? 'text-blue-600 dark:text-blue-400' 
+                  : 'text-gray-600 dark:text-gray-400'
+              }`}
+            >
+              <FileText className="h-5 w-5 mb-1" />
+              <span className="text-xs font-medium">Summary</span>
+            </Link>
+          </div>
         </div>
       </div>
     </div>

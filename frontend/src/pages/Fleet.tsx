@@ -880,9 +880,9 @@ export default function Fleet() {
         </div>
         <button 
           onClick={handleAddNew}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm sm:text-base font-medium flex items-center justify-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 shadow-sm"
+          className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-4 sm:px-6 py-3 sm:py-3 rounded-lg text-sm sm:text-base font-medium flex items-center justify-center gap-2 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 shadow-sm min-h-[44px]"
         >
-          <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+          <Plus className="h-5 w-5" />
           <span className="hidden sm:inline">Add New Vehicle</span>
           <span className="sm:hidden">Add Vehicle</span>
         </button>
@@ -935,7 +935,7 @@ export default function Fleet() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
