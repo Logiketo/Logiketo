@@ -148,43 +148,35 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <div className="min-h-screen bg-theme-primary">
-      {/* Simplified Header - Hidden on mobile, shown on desktop */}
-      <nav className="hidden md:block sticky top-0 z-50 border-b bg-gray-800 border-gray-700">
-        <div className="w-full px-4 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+      {/* Simplified Header - Logo and User Profile Only */}
+      <nav className="sticky top-0 z-50 border-b bg-gray-800 border-gray-700 md:bg-gray-800">
+        <div className="w-full px-3 sm:px-4 lg:px-8">
+          <div className="flex items-center justify-between h-14 md:h-16">
             {/* Logo - Left */}
             <Link to="/dashboard" className="flex items-center hover:opacity-80 transition-opacity flex-shrink-0">
-              <Truck className="h-8 w-8 text-blue-400 mr-3" />
-              <span className="text-2xl font-bold tracking-wide">
+              <Truck className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-blue-400 mr-2 sm:mr-3" />
+              <span className="text-lg sm:text-xl md:text-2xl font-bold tracking-wide">
                 <span className="text-blue-600">Logi</span>
                 <span className="text-teal-400">Keto</span>
               </span>
             </Link>
             
             {/* User Profile - Right */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-3">
               <button
                 onClick={toggleTheme}
-                className="text-white hover:text-blue-300 transition-colors p-2 rounded-lg hover:bg-gray-700"
+                className="text-white hover:text-blue-300 transition-colors p-2 rounded-lg hover:bg-gray-700 active:scale-95"
                 title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
               >
-                {isDarkMode ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}
+                {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </button>
               <button
                 onClick={toggleUserDropdown}
-                className="flex items-center gap-x-3 text-sm text-white hover:text-blue-300 transition-all duration-300 px-3 py-2 rounded-lg hover:bg-gray-700"
+                className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform"
               >
-                <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-bold text-white">
-                    {user?.firstName?.[0]}{user?.lastName?.[0]}
-                  </span>
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-white">
-                    {user?.firstName} {user?.lastName}
-                  </p>
-                  <p className="text-xs text-blue-200 font-medium">{user?.role}</p>
-                </div>
+                <span className="text-sm font-bold text-white">
+                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                </span>
               </button>
             </div>
           </div>
@@ -194,7 +186,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Dropdown - Outside of nav structure */}
       {isUserDropdownOpen && (
         <div 
-          className="fixed right-4 top-16 w-48 bg-white border border-gray-200 rounded-md shadow-xl z-[9999] hidden md:block"
+          className="fixed right-2 sm:right-4 top-14 sm:top-16 md:top-16 w-48 bg-white border border-gray-200 rounded-md shadow-xl z-[9999]"
           style={{ pointerEvents: 'auto' }}
           ref={dropdownRef}
         >
@@ -407,21 +399,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
         {/* Main content */}
         <div className={showSidebar ? "lg:pl-64 flex-1" : "flex-1"}>
-          {/* Floating menu button for mobile sidebar - Only show when sidebar exists */}
+          {/* Top navigation bar for pages with sidebar */}
           {showSidebar && (
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="md:hidden fixed top-4 left-4 z-50 p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg active:scale-95 transition-all"
-              aria-label="Open menu"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-          )}
-          
-          {/* Desktop sidebar header bar */}
-          {showSidebar && (
-            <div className={`hidden md:block sticky top-16 z-40 flex h-14 shrink-0 items-center gap-x-4 border-b px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className={`sticky top-14 md:top-16 z-40 flex h-14 shrink-0 items-center gap-x-4 border-b px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <button
+                type="button"
+                className={`-m-2.5 p-2.5 lg:hidden ${isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-700 hover:text-gray-900'} active:scale-95 transition-transform`}
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+
               <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
                 <div className="flex flex-1"></div>
               </div>
@@ -429,7 +417,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           )}
 
           {/* Page content */}
-          <main className={`${showSidebar ? "py-8" : ""} bg-gray-50 dark:bg-gray-900 min-h-screen pb-20 md:pb-0 ${showSidebar ? "pt-0 md:pt-8" : ""}`}>
+          <main className={`${showSidebar ? "py-8" : ""} bg-gray-50 dark:bg-gray-900 min-h-screen pb-20 md:pb-0`}>
             <div className={showSidebar ? "mx-auto max-w-7xl px-4 sm:px-6 lg:px-8" : ""}>
               {children}
             </div>
