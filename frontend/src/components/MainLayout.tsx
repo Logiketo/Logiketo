@@ -87,6 +87,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { isDarkMode, toggleTheme } = useTheme()
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
 
@@ -151,22 +152,22 @@ export default function MainLayout({ children }: MainLayoutProps) {
     <div className="min-h-screen bg-theme-primary">
       {/* Main Navigation Header - Always Visible */}
       <nav className="sticky top-0 z-50 border-b bg-gray-800 border-gray-700">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-3 sm:px-4 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo - Far Left */}
-            <Link to="/dashboard" className="flex items-center hover:opacity-80 transition-opacity">
-              <Truck className="h-8 w-8 text-blue-400 mr-3" />
-              <span className="text-2xl font-bold tracking-wide">
+            <Link to="/dashboard" className="flex items-center hover:opacity-80 transition-opacity flex-shrink-0">
+              <Truck className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400 mr-2 sm:mr-3" />
+              <span className="text-lg sm:text-2xl font-bold tracking-wide">
                 <span className="text-blue-600">Logi</span>
                 <span className="text-teal-400">Keto</span>
               </span>
             </Link>
             
-            {/* Center Navigation */}
-            <div className="flex items-center space-x-8">
+            {/* Center Navigation - Desktop Only */}
+            <div className="hidden md:flex items-center space-x-4 lg:space-x-8">
               <Link 
                 to="/myfleet" 
-                className={`text-white font-semibold transition-all duration-300 text-base px-4 py-2 rounded-lg ${
+                className={`text-white font-semibold transition-all duration-300 text-sm lg:text-base px-3 lg:px-4 py-2 rounded-lg ${
                   location.pathname.startsWith('/myfleet') || location.pathname.startsWith('/fleet') || 
                   location.pathname.startsWith('/employees') || location.pathname.startsWith('/customers')
                     ? 'bg-gray-700 text-white' 
@@ -177,7 +178,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               </Link>
               <Link 
                 to="/dispatch" 
-                className={`text-white font-semibold transition-all duration-300 text-base px-4 py-2 rounded-lg ${
+                className={`text-white font-semibold transition-all duration-300 text-sm lg:text-base px-3 lg:px-4 py-2 rounded-lg ${
                   location.pathname.startsWith('/dispatch') || location.pathname.startsWith('/units')
                     ? 'bg-gray-700 text-white' 
                     : 'hover:bg-gray-700 hover:text-blue-300'
@@ -187,7 +188,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               </Link>
               <Link 
                 to="/orders" 
-                className={`text-white font-semibold transition-all duration-300 text-base px-4 py-2 rounded-lg ${
+                className={`text-white font-semibold transition-all duration-300 text-sm lg:text-base px-3 lg:px-4 py-2 rounded-lg ${
                   location.pathname.startsWith('/orders')
                     ? 'bg-gray-700 text-white' 
                     : 'hover:bg-gray-700 hover:text-blue-300'
@@ -197,7 +198,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               </Link>
               <Link 
                 to="/reports" 
-                className={`text-white font-semibold transition-all duration-300 text-base px-4 py-2 rounded-lg ${
+                className={`text-white font-semibold transition-all duration-300 text-sm lg:text-base px-3 lg:px-4 py-2 rounded-lg ${
                   location.pathname.startsWith('/reports')
                     ? 'bg-gray-700 text-white' 
                     : 'hover:bg-gray-700 hover:text-blue-300'
@@ -207,41 +208,122 @@ export default function MainLayout({ children }: MainLayoutProps) {
               </Link>
             </div>
             
+            {/* Mobile Navigation Button */}
+            <button
+              onClick={() => setMobileNavOpen(!mobileNavOpen)}
+              className="md:hidden text-white hover:text-blue-300 transition-colors p-2 rounded-lg hover:bg-gray-700"
+              aria-label="Toggle navigation menu"
+            >
+              {mobileNavOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+            
             {/* User Profile - Far Right */}
-            <div className="flex items-center space-x-4">
+            <div className="hidden sm:flex items-center space-x-2 lg:space-x-4">
               <button
                 onClick={toggleTheme}
                 className="text-white hover:text-blue-300 transition-colors p-2 rounded-lg hover:bg-gray-700"
                 title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
               >
-                {isDarkMode ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}
+                {isDarkMode ? <Sun className="h-5 w-5 lg:h-6 lg:w-6" /> : <Moon className="h-5 w-5 lg:h-6 lg:w-6" />}
               </button>
               <button
                 onClick={toggleUserDropdown}
-                className="flex items-center gap-x-3 text-sm text-white hover:text-blue-300 transition-all duration-300 px-3 py-2 rounded-lg hover:bg-gray-700"
+                className="flex items-center gap-x-2 lg:gap-x-3 text-sm text-white hover:text-blue-300 transition-all duration-300 px-2 lg:px-3 py-2 rounded-lg hover:bg-gray-700"
               >
-                <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
                   <span className="text-sm font-bold text-white">
                     {user?.firstName?.[0]}{user?.lastName?.[0]}
                   </span>
                 </div>
-                <div className="text-left">
+                <div className="hidden lg:block text-left">
                   <p className="text-sm font-semibold text-white">
                     {user?.firstName} {user?.lastName}
                   </p>
                   <p className="text-xs text-blue-200 font-medium">{user?.role}</p>
                 </div>
-                <ChevronDown className="h-4 w-4 text-blue-300" />
+                <ChevronDown className="hidden lg:block h-4 w-4 text-blue-300" />
+              </button>
+            </div>
+            
+            {/* Mobile User Profile - Compact */}
+            <div className="sm:hidden flex items-center space-x-2">
+              <button
+                onClick={toggleTheme}
+                className="text-white hover:text-blue-300 transition-colors p-2 rounded-lg hover:bg-gray-700"
+                title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </button>
+              <button
+                onClick={toggleUserDropdown}
+                className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0"
+              >
+                <span className="text-sm font-bold text-white">
+                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                </span>
               </button>
             </div>
           </div>
         </div>
+        
+        {/* Mobile Navigation Menu */}
+        {mobileNavOpen && (
+          <div className="md:hidden border-t border-gray-700 bg-gray-800">
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              <Link
+                to="/myfleet"
+                onClick={() => setMobileNavOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium text-white ${
+                  location.pathname.startsWith('/myfleet') || location.pathname.startsWith('/fleet') || 
+                  location.pathname.startsWith('/employees') || location.pathname.startsWith('/customers')
+                    ? 'bg-gray-700 text-white' 
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                }`}
+              >
+                MyFleet
+              </Link>
+              <Link
+                to="/dispatch"
+                onClick={() => setMobileNavOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium text-white ${
+                  location.pathname.startsWith('/dispatch') || location.pathname.startsWith('/units')
+                    ? 'bg-gray-700 text-white' 
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                }`}
+              >
+                MyDispatch
+              </Link>
+              <Link
+                to="/orders"
+                onClick={() => setMobileNavOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium text-white ${
+                  location.pathname.startsWith('/orders')
+                    ? 'bg-gray-700 text-white' 
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                }`}
+              >
+                Orders
+              </Link>
+              <Link
+                to="/reports"
+                onClick={() => setMobileNavOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium text-white ${
+                  location.pathname.startsWith('/reports')
+                    ? 'bg-gray-700 text-white' 
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                }`}
+              >
+                Summary
+              </Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Dropdown - Outside of nav structure */}
       {isUserDropdownOpen && (
         <div 
-          className="fixed right-4 top-20 w-48 bg-white border border-gray-200 rounded-md shadow-xl z-[9999]"
+          className="fixed right-2 sm:right-4 top-16 sm:top-20 w-48 bg-white border border-gray-200 rounded-md shadow-xl z-[9999]"
           style={{ pointerEvents: 'auto' }}
           ref={dropdownRef}
         >

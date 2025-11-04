@@ -355,9 +355,9 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
   console.log('OrderForm render - isLoading:', isLoading)
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {order ? 'Edit Order' : 'Create New Order'}
@@ -899,22 +899,22 @@ export default function Orders() {
     <div className="space-y-6">
       <div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Order Management</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Order Management</h1>
+          <p className="mt-1 text-xs sm:text-sm text-gray-600 dark:text-gray-300">
             Track and manage all your logistics orders.
           </p>
         </div>
       </div>
 
-      <div className="card p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="relative">
+      <div className="card p-4 sm:p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Order #"
-                className="input pl-10 w-32 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                className="input pl-10 w-full sm:w-32 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 value={orderNumberSearch}
                 onChange={(e) => {
                   setOrderNumberSearch(e.target.value)
@@ -922,12 +922,12 @@ export default function Orders() {
                 }}
               />
             </div>
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Customer & Load#"
-                className="input pl-10 w-40 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                className="input pl-10 w-full sm:w-40 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 value={customerLoadSearch}
                 onChange={(e) => {
                   setCustomerLoadSearch(e.target.value)
@@ -935,12 +935,12 @@ export default function Orders() {
                 }}
               />
             </div>
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Unit# / Driver"
-                className="input pl-10 w-40 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                className="input pl-10 w-full sm:w-40 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 value={unitDriverSearch}
                 onChange={(e) => {
                   setUnitDriverSearch(e.target.value)
@@ -954,7 +954,7 @@ export default function Orders() {
                 setStatusFilter(e.target.value)
                 setCurrentPage(1)
               }}
-                className="input w-32 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                className="input w-full sm:w-32 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
             >
               <option value="">All Status</option>
               {(() => {
@@ -1036,8 +1036,9 @@ export default function Orders() {
           </div>
         ) : (
           <>
-            <div>
-              <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="inline-block min-w-full align-middle">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-16">
@@ -1234,12 +1235,13 @@ export default function Orders() {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Pagination */}
             {pagination && pagination.pages > 1 && (
-              <div className="flex items-center justify-between mt-6">
-                <div className="text-sm text-gray-700">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+                <div className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                   Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
                   {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
                   {pagination.total} results

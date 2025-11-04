@@ -19,11 +19,11 @@ const vehicleSchema = z.object({
   unitNumber: z.string().optional().or(z.literal('')),
   driverName: z.string().optional().or(z.literal('')),
   color: z.string().optional().or(z.literal('')),
-  make: z.string().optional().or(z.literal('')),
-  model: z.string().optional().or(z.literal('')),
-  year: z.string().optional().or(z.literal('')),
+  make: z.string().min(1, 'Make is required'),
+  model: z.string().min(1, 'Model is required'),
+  year: z.string().min(1, 'Year is required'),
   vin: z.string().optional().or(z.literal('')),
-  licensePlate: z.string().optional().or(z.literal('')),
+  licensePlate: z.string().min(1, 'License plate is required'),
   registrationExpDate: z.string().optional().or(z.literal('')),
   insuranceExpDate: z.string().optional().or(z.literal('')),
   dimensions: z.string().optional().or(z.literal('')),
@@ -112,31 +112,73 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors }
   } = useForm<VehicleFormData>({
     resolver: zodResolver(vehicleSchema),
-    defaultValues: vehicle ? {
-      unitNumber: vehicle.unitNumber || '',
-      driverName: vehicle.driverName || '',
-      color: vehicle.color || '',
-      make: vehicle.make || '',
-      model: vehicle.model || '',
-      year: vehicle.year ? vehicle.year.toString() : '',
-      vin: vehicle.vin || '',
-      licensePlate: vehicle.licensePlate || '',
-      registrationExpDate: vehicle.registrationExpDate || '',
-      insuranceExpDate: vehicle.insuranceExpDate || '',
-      dimensions: vehicle.dimensions || '',
-      payload: vehicle.payload || '',
+    defaultValues: {
+      unitNumber: '',
+      driverName: '',
+      color: '',
+      make: '',
+      model: '',
+      year: new Date().getFullYear().toString(),
+      vin: '',
+      licensePlate: '',
+      registrationExpDate: '',
+      insuranceExpDate: '',
+      dimensions: '',
+      payload: '',
       insuranceDocument: undefined,
       registrationDocument: undefined
-    } : {}
+    }
   })
+
+  // Reset form when vehicle prop changes
+  useEffect(() => {
+    if (vehicle) {
+      reset({
+        unitNumber: vehicle.unitNumber || '',
+        driverName: vehicle.driverName || '',
+        color: vehicle.color || '',
+        make: vehicle.make || '',
+        model: vehicle.model || '',
+        year: vehicle.year ? vehicle.year.toString() : '',
+        vin: vehicle.vin || '',
+        licensePlate: vehicle.licensePlate || '',
+        registrationExpDate: vehicle.registrationExpDate || '',
+        insuranceExpDate: vehicle.insuranceExpDate || '',
+        dimensions: vehicle.dimensions || '',
+        payload: vehicle.payload || '',
+        insuranceDocument: undefined,
+        registrationDocument: undefined
+      })
+    } else {
+      reset({
+        unitNumber: '',
+        driverName: '',
+        color: '',
+        make: '',
+        model: '',
+        year: new Date().getFullYear().toString(),
+        vin: '',
+        licensePlate: '',
+        registrationExpDate: '',
+        insuranceExpDate: '',
+        dimensions: '',
+        payload: '',
+        insuranceDocument: undefined,
+        registrationDocument: undefined
+      })
+    }
+  }, [vehicle, reset])
 
   const createMutation = useMutation({
     mutationFn: vehicleService.createVehicle,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Vehicle created successfully:', data)
       queryClient.invalidateQueries({ queryKey: ['vehicles'] })
+      toast.success('Vehicle created successfully!')
       onSuccess()
     },
     onError: (error: any) => {
@@ -147,7 +189,7 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: CreateVehicleData }) =>
+    mutationFn: ({ id, data }: { id: string; data: CreateVehicleData | FormData }) =>
       vehicleService.updateVehicle(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] })
@@ -250,7 +292,11 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
   const onSubmit = async (data: VehicleFormData) => {
     setIsLoading(true)
     try {
+      console.log('=== VEHICLE FORM SUBMISSION START ===')
       console.log('Form data received:', data)
+      console.log('Form validation errors:', errors)
+      console.log('Current vehicle being edited:', vehicle)
+      console.log('Is editing existing vehicle:', !!vehicle)
       
       // Create FormData for file uploads
       const formData = new FormData()
@@ -259,19 +305,26 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
       formData.append('make', data.make && data.make.trim() ? data.make : 'Unknown')
       formData.append('model', data.model && data.model.trim() ? data.model : 'Unknown')
       formData.append('year', data.year && data.year.trim() ? data.year : new Date().getFullYear().toString())
-      formData.append('licensePlate', (data.licensePlate && data.licensePlate.trim()) || (data.unitNumber && data.unitNumber.trim()) || 'TEMP-PLATE')
+      formData.append('licensePlate', data.licensePlate && data.licensePlate.trim() ? data.licensePlate : 'TEMP-PLATE')
       
-      if (data.payload && data.payload.trim()) {
-        formData.append('capacity', parseFloat(data.payload.replace(/[^\d.]/g, '')).toString())
-      }
       if (data.vin && data.vin.trim()) formData.append('vin', data.vin.trim())
       formData.append('color', data.color || '')
+      
+      // Send all fields, even if empty (like the working fields)
       formData.append('unitNumber', data.unitNumber || '')
       formData.append('driverName', data.driverName || '')
       formData.append('dimensions', data.dimensions || '')
       formData.append('payload', data.payload || '')
       formData.append('registrationExpDate', data.registrationExpDate || '')
       formData.append('insuranceExpDate', data.insuranceExpDate || '')
+      
+      // Handle capacity separately (convert payload to number for capacity field)
+      if (data.payload && data.payload.trim()) {
+        const numericValue = parseFloat(data.payload.replace(/[^\d.]/g, ''))
+        if (!isNaN(numericValue)) {
+          formData.append('capacity', numericValue.toString())
+        }
+      }
       
       // Add documents from the new document system
       documents.forEach((doc, index) => {
@@ -297,26 +350,43 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
       console.log('Data being sent to backend:', formData)
       
       // Debug: Log all FormData entries
+      console.log('=== FORM DATA BEING SENT ===')
       for (let [key, value] of formData.entries()) {
         console.log(`${key}: ${value}`)
       }
+      console.log('=== END FORM DATA ===')
+      
+      // Also log the original form data
+      console.log('=== ORIGINAL FORM DATA ===')
+      console.log('unitNumber:', data.unitNumber)
+      console.log('driverName:', data.driverName)
+      console.log('dimensions:', data.dimensions)
+      console.log('payload:', data.payload)
+      console.log('registrationExpDate:', data.registrationExpDate)
+      console.log('insuranceExpDate:', data.insuranceExpDate)
+      console.log('=== END ORIGINAL FORM DATA ===')
+      
+      // Debug: Check if form fields are actually populated
+      console.log('=== FORM FIELD VALUES ===')
+      console.log('All form data keys:', Object.keys(data))
+      console.log('All form data values:', Object.values(data))
+      console.log('=== END FORM FIELD VALUES ===')
 
-      // Convert FormData to CreateVehicleData
-      const vehicleData: CreateVehicleData = {
-        make: formData.get('make') as string,
-        model: formData.get('model') as string,
-        year: parseInt(formData.get('year') as string),
-        licensePlate: formData.get('licensePlate') as string,
-        vin: formData.get('vin') as string || undefined,
-        color: formData.get('color') as string || undefined,
-        capacity: formData.get('capacity') ? parseFloat(formData.get('capacity') as string) : undefined
-      }
-
+      // Send FormData directly to preserve file uploads
+      console.log('=== CALLING API ===')
+      console.log('Is editing existing vehicle:', !!vehicle)
+      console.log('Mutation loading state:', createMutation.isPending)
+      
       if (vehicle) {
-        await updateMutation.mutateAsync({ id: vehicle.id, data: vehicleData })
+        console.log('Updating vehicle with ID:', vehicle.id)
+        await updateMutation.mutateAsync({ id: vehicle.id, data: formData })
       } else {
-        await createMutation.mutateAsync(vehicleData)
+        console.log('Creating new vehicle')
+        const result = await createMutation.mutateAsync(formData)
+        console.log('Vehicle creation result:', result)
       }
+      
+      console.log('=== API CALL COMPLETED ===')
     } catch (error: any) {
       console.error('Form submission error:', error)
       console.error('Error response:', error.response?.data)
@@ -334,7 +404,7 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
       } else if (error.response?.data?.error) {
         toast.error(error.response.data.error)
       } else {
-        toast.error('Failed to create vehicle. Please check the console for details.')
+        toast.error('Failed to save vehicle. Please check the console for details.')
       }
     } finally {
       setIsLoading(false)
@@ -418,6 +488,9 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
                   placeholder="e.g., Ford"
                 />
+                {errors.make && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.make.message}</p>
+                )}
               </div>
 
               <div>
@@ -430,6 +503,9 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
                   placeholder="e.g., Transit"
                 />
+                {errors.model && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.model.message}</p>
+                )}
               </div>
 
               <div>
@@ -442,6 +518,9 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
                   placeholder="2024"
                 />
+                {errors.year && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.year.message}</p>
+                )}
               </div>
             </div>
 
@@ -469,6 +548,9 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
                   placeholder="ABC-123"
                 />
+                {errors.licensePlate && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.licensePlate.message}</p>
+                )}
               </div>
             </div>
 
@@ -761,6 +843,15 @@ export default function Fleet() {
 
 
   const handleEdit = (vehicle: Vehicle) => {
+    console.log('=== EDITING VEHICLE ===')
+    console.log('Vehicle data for edit:', vehicle)
+    console.log('unitNumber:', vehicle.unitNumber)
+    console.log('driverName:', vehicle.driverName)
+    console.log('dimensions:', vehicle.dimensions)
+    console.log('payload:', vehicle.payload)
+    console.log('registrationExpDate:', vehicle.registrationExpDate)
+    console.log('insuranceExpDate:', vehicle.insuranceExpDate)
+    console.log('=== END EDITING VEHICLE ===')
     setSelectedVehicle(vehicle)
     setShowForm(true)
   }
@@ -780,31 +871,32 @@ export default function Fleet() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Fleet Management</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-300">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Fleet Management</h1>
+          <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-300">
             Manage your vehicle fleet and track vehicle status.
           </p>
         </div>
         <button 
           onClick={handleAddNew}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 shadow-sm"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm sm:text-base font-medium flex items-center justify-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 shadow-sm"
         >
-          <Plus className="h-5 w-5" />
-          Add New Vehicle
+          <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+          <span className="hidden sm:inline">Add New Vehicle</span>
+          <span className="sm:hidden">Add Vehicle</span>
         </button>
       </div>
 
-      <div className="card p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="relative">
+      <div className="card p-4 sm:p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search vehicles by unit number, driver name, make, model, or license plate..."
-                className="input pl-10 w-64 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                placeholder="Search vehicles..."
+                className="input pl-10 w-full sm:w-64 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value)
@@ -818,7 +910,7 @@ export default function Fleet() {
                 setStatusFilter(e.target.value)
                 setCurrentPage(1)
               }}
-              className="input w-40 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+              className="input w-full sm:w-40 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
             >
               <option value="">All Status</option>
               <option value="AVAILABLE">Available</option>

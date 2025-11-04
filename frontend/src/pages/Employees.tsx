@@ -382,7 +382,7 @@ export default function Employees() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Employees</h1>
+          <h1 className={`text-xl sm:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Employees</h1>
           <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>Manage your team members and their information</p>
         </div>
         <button
