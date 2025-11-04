@@ -148,8 +148,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <div className="min-h-screen bg-theme-primary">
-      {/* Simplified Header - Logo and User Profile Only */}
-      <nav className="sticky top-0 z-50 border-b bg-gray-800 border-gray-700 md:bg-gray-800">
+      {/* Header - Mobile: Logo + Profile, Desktop: Logo + Navigation + Profile */}
+      <nav className="sticky top-0 z-50 border-b bg-gray-800 border-gray-700">
         <div className="w-full px-3 sm:px-4 lg:px-8">
           <div className="flex items-center justify-between h-14 md:h-16">
             {/* Logo - Left */}
@@ -160,6 +160,51 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 <span className="text-teal-400">Keto</span>
               </span>
             </Link>
+            
+            {/* Center Navigation - Desktop Only */}
+            <div className="hidden md:flex items-center space-x-4 lg:space-x-8">
+              <Link 
+                to="/myfleet" 
+                className={`text-white font-semibold transition-all duration-300 text-sm lg:text-base px-3 lg:px-4 py-2 rounded-lg ${
+                  location.pathname.startsWith('/myfleet') || location.pathname.startsWith('/fleet') || 
+                  location.pathname.startsWith('/employees') || location.pathname.startsWith('/customers')
+                    ? 'bg-gray-700 text-white' 
+                    : 'hover:bg-gray-700 hover:text-blue-300'
+                }`}
+              >
+                MyFleet
+              </Link>
+              <Link 
+                to="/dispatch" 
+                className={`text-white font-semibold transition-all duration-300 text-sm lg:text-base px-3 lg:px-4 py-2 rounded-lg ${
+                  location.pathname.startsWith('/dispatch') || location.pathname.startsWith('/units')
+                    ? 'bg-gray-700 text-white' 
+                    : 'hover:bg-gray-700 hover:text-blue-300'
+                }`}
+              >
+                MyDispatch
+              </Link>
+              <Link 
+                to="/orders" 
+                className={`text-white font-semibold transition-all duration-300 text-sm lg:text-base px-3 lg:px-4 py-2 rounded-lg ${
+                  location.pathname.startsWith('/orders')
+                    ? 'bg-gray-700 text-white' 
+                    : 'hover:bg-gray-700 hover:text-blue-300'
+                }`}
+              >
+                Orders
+              </Link>
+              <Link 
+                to="/reports" 
+                className={`text-white font-semibold transition-all duration-300 text-sm lg:text-base px-3 lg:px-4 py-2 rounded-lg ${
+                  location.pathname.startsWith('/reports')
+                    ? 'bg-gray-700 text-white' 
+                    : 'hover:bg-gray-700 hover:text-blue-300'
+                }`}
+              >
+                Summary
+              </Link>
+            </div>
             
             {/* User Profile - Right */}
             <div className="flex items-center space-x-2 sm:space-x-3">
