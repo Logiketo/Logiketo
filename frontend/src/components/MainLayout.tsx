@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import { 
   Truck, 
   LogOut, 
-  ChevronDown, 
   Settings, 
   Menu, 
   X,
