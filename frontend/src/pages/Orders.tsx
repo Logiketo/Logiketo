@@ -915,8 +915,8 @@ export default function Orders() {
         </div>
       </div>
 
-      <div className="card p-4 sm:p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" style={{ width: 'calc(100vw - 256px)', maxWidth: 'none', marginLeft: 'calc((100vw - 100%) / -2)', marginRight: 'calc((100vw - 100%) / -2)' }}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -1045,9 +1045,9 @@ export default function Orders() {
           </div>
         ) : (
           <>
-            <div className="bg-white dark:bg-gray-800">
+            <div className="bg-white dark:bg-gray-800 overflow-x-visible">
               <div className="w-full">
-                <table className="w-full divide-y divide-gray-200 dark:divide-gray-700 table-auto">
+                <table className="w-full divide-y divide-gray-200 dark:divide-gray-700" style={{ tableLayout: 'fixed', width: '100%' }}>
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" style={{ width: '5%' }}>
