@@ -1143,45 +1143,25 @@ export default function Orders() {
                         </td>
                         <td className="px-3 py-2">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {(() => {
-                              const vehicle = order.vehicle as any
-                              const vehicleId = order.vehicleId
-                              
-                              // Log for debugging
-                              if (vehicleId) {
-                                console.log(`Order ${order.id} - vehicleId: ${vehicleId}, vehicle:`, vehicle, 'unitNumber:', vehicle?.unitNumber, 'driverName:', vehicle?.driverName)
-                              }
-                              
-                              if (vehicle) {
-                                const unitNum = vehicle.unitNumber != null && vehicle.unitNumber !== '' ? String(vehicle.unitNumber) : null
-                                const license = vehicle.licensePlate || null
-                                const driver = vehicle.driverName || null
-                                
-                                if (unitNum || license || driver) {
-                                  return (
-                                    <div className="flex items-center">
-                                      <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2" />
-                                      <span className="truncate">
-                                        <span className="font-semibold text-gray-900 dark:text-white">
-                                          {unitNum || license || 'Unit #'}
-                                        </span>
-                                        {driver && (
-                                          <span className="text-gray-600 dark:text-gray-300 ml-2 font-normal">
-                                            - {driver}
-                                          </span>
-                                        )}
-                                      </span>
-                                    </div>
-                                  )
-                                }
-                              }
-                              
-                              return (
-                                <span className="text-gray-500 dark:text-gray-400 font-normal">
-                                  {vehicleId ? `Vehicle ID: ${vehicleId}` : 'No unit'}
+                            {order.vehicle ? (
+                              <div className="flex items-center">
+                                <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2" />
+                                <span className="truncate">
+                                  <span className="font-semibold text-gray-900 dark:text-white">
+                                    {(order.vehicle as any).unitNumber || (order.vehicle as any).licensePlate || 'Unit #'}
+                                  </span>
+                                  {(order.vehicle as any).driverName && (
+                                    <span className="text-gray-600 dark:text-gray-300 ml-2 font-normal">
+                                      - {(order.vehicle as any).driverName}
+                                    </span>
+                                  )}
                                 </span>
-                              )
-                            })()}
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 dark:text-gray-400 font-normal">
+                                No unit
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-3 py-2">

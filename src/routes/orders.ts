@@ -226,13 +226,7 @@ router.get('/', authenticate, async (req, res) => {
       `) as Promise<any[]>
     ])
     
-    const orders = ordersRaw.map((row: any) => {
-      // Debug: Log vehicle data for first few orders
-      if (ordersRaw.indexOf(row) < 3 && row.vehicleId) {
-        console.log(`Order ${row.orderNumber} - vehicleId: ${row.vehicleId}, vehicle_id: ${row.vehicle_id}, unitNumber: ${row.vehicle_unitNumber}, driverName: ${row.vehicle_driverName}`)
-      }
-      
-      return {
+    const orders = ordersRaw.map((row: any) => ({
         id: row.id,
         orderNumber: row.orderNumber,
         customerId: row.customerId,
@@ -275,8 +269,7 @@ router.get('/', authenticate, async (req, res) => {
           lastName: row.driver_lastName,
           email: row.driver_email
         } : null
-      }
-    })
+    }))
     
     const total = totalRaw[0]?.count || 0
 

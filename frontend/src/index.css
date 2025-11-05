@@ -82,49 +82,18 @@
     }
   }
   
-  /* Thin scrollbars that appear on hover/scroll */
+  /* Hide scrollbars completely */
   .overflow-x-auto::-webkit-scrollbar,
   .overflow-y-auto::-webkit-scrollbar {
-    height: 8px;
-    width: 8px;
+    display: none;
+    width: 0;
+    height: 0;
   }
   
-  .overflow-x-auto::-webkit-scrollbar-track,
-  .overflow-y-auto::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  .overflow-x-auto::-webkit-scrollbar-thumb,
-  .overflow-y-auto::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-    opacity: 0.5;
-    transition: opacity 0.2s;
-  }
-  
-  .overflow-x-auto:hover::-webkit-scrollbar-thumb,
-  .overflow-y-auto:hover::-webkit-scrollbar-thumb,
-  .overflow-x-auto:active::-webkit-scrollbar-thumb,
-  .overflow-y-auto:active::-webkit-scrollbar-thumb {
-    opacity: 1;
-  }
-  
-  /* Dark mode scrollbar */
-  .dark .overflow-x-auto::-webkit-scrollbar-thumb,
-  .dark .overflow-y-auto::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-  }
-  
-  /* Firefox - show thin scrollbar */
   .overflow-x-auto,
   .overflow-y-auto {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-  }
-  
-  .dark .overflow-x-auto,
-  .dark .overflow-y-auto {
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
   
   /* Prevent text selection on buttons and interactive elements */
