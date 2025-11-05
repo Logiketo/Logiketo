@@ -159,36 +159,41 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
 
   // Reset form values when order changes
   useEffect(() => {
-    if (order) {
-      reset({
-        customerId: order.customerId || '',
-        vehicleId: order.vehicleId || '',
-        driverId: order.driverId || '',
-        employeeId: (order as any).employeeId || '',
-        customerLoadNumber: (order as any).customerLoadNumber || '',
-        pickupAddress: order.pickupAddress || '',
-        deliveryAddress: order.deliveryAddress || '',
-        pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-        deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
-        miles: (order as any).miles ? (order as any).miles.toString() : '',
-        pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
-        weight: order.weight ? order.weight.toString() : '',
-        notes: order.notes || '',
-        priority: (order as any).priority || 'NORMAL'
-      })
-      
-      // Set loadPay and driverPay
-      setTimeout(() => {
-        const loadPayInput = document.querySelector('input[name="loadPay"]') as HTMLInputElement
-        const driverPayInput = document.querySelector('input[name="driverPay"]') as HTMLInputElement
+    if (order && order.id) {
+      // Use setTimeout to ensure form is fully rendered
+      const timer = setTimeout(() => {
+        reset({
+          customerId: order.customerId || '',
+          vehicleId: order.vehicleId || '',
+          driverId: order.driverId || '',
+          employeeId: (order as any).employeeId || '',
+          customerLoadNumber: (order as any).customerLoadNumber || '',
+          pickupAddress: order.pickupAddress || '',
+          deliveryAddress: order.deliveryAddress || '',
+          pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+          deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
+          miles: (order as any).miles ? (order as any).miles.toString() : '',
+          pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
+          weight: order.weight ? order.weight.toString() : '',
+          notes: order.notes || '',
+          priority: (order as any).priority || 'NORMAL'
+        }, { keepDefaultValues: false })
         
-        if (loadPayInput) {
-          loadPayInput.value = (order as any).loadPay ? (order as any).loadPay.toString() : ''
-        }
-        if (driverPayInput) {
-          driverPayInput.value = (order as any).driverPay ? (order as any).driverPay.toString() : ''
-        }
-      }, 100)
+        // Set loadPay and driverPay after a short delay
+        setTimeout(() => {
+          const loadPayInput = document.querySelector('input[name="loadPay"]') as HTMLInputElement
+          const driverPayInput = document.querySelector('input[name="driverPay"]') as HTMLInputElement
+          
+          if (loadPayInput) {
+            loadPayInput.value = (order as any).loadPay ? (order as any).loadPay.toString() : ''
+          }
+          if (driverPayInput) {
+            driverPayInput.value = (order as any).driverPay ? (order as any).driverPay.toString() : ''
+          }
+        }, 50)
+      }, 0)
+      
+      return () => clearTimeout(timer)
     } else {
       reset({
         customerId: '',
@@ -205,9 +210,9 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
         weight: '',
         notes: '',
         priority: 'NORMAL'
-      })
+      }, { keepDefaultValues: false })
     }
-  }, [order, reset])
+  }, [order?.id, reset])
 
 
 
@@ -1309,6 +1314,7 @@ export default function Orders() {
       {/* Order Form Modal */}
       {showForm && (
         <OrderForm
+          key={selectedOrder?.id || 'new'}
           order={selectedOrder || undefined}
           onClose={handleFormClose}
           onSuccess={handleFormClose}
