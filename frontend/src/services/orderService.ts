@@ -33,8 +33,9 @@ export interface Order {
     id: string
     make: string
     model: string
-    licensePlate: string
-    unitNumber?: string
+    licensePlate?: string
+    unitNumber?: string | number
+    driverName?: string
   }
   driver?: {
     id: string

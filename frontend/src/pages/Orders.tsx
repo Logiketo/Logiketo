@@ -408,9 +408,9 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
   console.log('OrderForm render - isLoading:', isLoading)
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full my-auto">
-        <div className="p-4 sm:p-6">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50" style={{ overflowY: 'auto' }}>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full my-8" style={{ maxHeight: 'calc(100vh - 4rem)' }}>
+        <div className="p-4 sm:p-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 8rem)' }}>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {order ? 'Edit Order' : 'Create New Order'}
@@ -1163,18 +1163,18 @@ export default function Orders() {
                                 <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
                                 <div className="flex flex-col">
                                   <span className="font-semibold text-gray-900 dark:text-white">
-                                    {(order.vehicle as any).unitNumber || (order.vehicle as any).licensePlate || 'N/A'}
+                                    {order.vehicle.unitNumber ? String(order.vehicle.unitNumber) : (order.vehicle.licensePlate || 'N/A')}
                                   </span>
-                                  {(order.vehicle as any).driverName && (
+                                  {order.vehicle.driverName && (
                                     <span className="text-xs text-gray-600 dark:text-gray-300 font-normal">
-                                      {(order.vehicle as any).driverName}
+                                      {order.vehicle.driverName}
                                     </span>
                                   )}
                                 </div>
                               </div>
                             ) : (
                               <span className="text-gray-500 dark:text-gray-400 font-normal">
-                                No unit
+                                {order.vehicleId ? `Vehicle ID: ${order.vehicleId}` : 'No unit'}
                               </span>
                             )}
                           </div>
