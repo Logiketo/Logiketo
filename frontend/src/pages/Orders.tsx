@@ -915,8 +915,8 @@ export default function Orders() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden -mx-4 sm:-mx-6 lg:-mx-8" style={{ width: 'calc(100vw - 256px)', maxWidth: 'none' }}>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+      <div className="card p-4 sm:p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -1045,33 +1045,33 @@ export default function Orders() {
           </div>
         ) : (
           <>
-            <div className="bg-white dark:bg-gray-800 overflow-x-visible">
-              <div className="w-full">
-                <table className="w-full divide-y divide-gray-200 dark:divide-gray-700" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <div className="overflow-x-auto -mx-4 sm:mx-0 bg-white dark:bg-gray-800" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="inline-block min-w-full align-middle">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" style={{ width: 'max-content' }}>
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" style={{ width: '5%' }}>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-16">
                       Order #
                     </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" style={{ width: '12%' }}>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-40">
                       Customer & Load#
                     </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" style={{ width: '10%' }}>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-32">
                       Unit# / Driver
                     </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" style={{ width: '10%' }}>
-                      Pay
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-32">
+                      Load Pay / Driver Pay
                     </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" style={{ width: '20%' }}>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Pickup
                     </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" style={{ width: '20%' }}>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Delivery
                     </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" style={{ width: '8%' }}>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-24">
                       Status
                     </th>
-                    <th className="px-2 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" style={{ width: '8%' }}>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-24">
                       Actions
                     </th>
                   </tr>
@@ -1084,30 +1084,30 @@ export default function Orders() {
                     
                     return (
                       <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-2 py-2">
+                        <td className="px-3 py-2">
                           <div className="text-xs font-medium text-gray-900 dark:text-white">
                             {order.orderNumber}
                           </div>
                         </td>
-                        <td className="px-2 py-2">
-                          <div className="text-xs text-gray-900 dark:text-white truncate" title={order.customer.name}>
+                        <td className="px-3 py-2">
+                          <div className="text-xs text-gray-900 dark:text-white truncate">
                             {order.customer.name}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate" title={(order as any).customerLoadNumber || 'N/A'}>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
                             {(order as any).customerLoadNumber || 'N/A'}
                           </div>
                         </td>
-                        <td className="px-2 py-2">
-                          <div className="text-xs font-medium text-gray-900 dark:text-white">
+                        <td className="px-3 py-2">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
                             {order.vehicle ? (
                               <div className="flex items-center">
-                                <Truck className="h-3 w-3 text-gray-500 dark:text-gray-400 mr-1 flex-shrink-0" />
-                                <span className="truncate" title={`${(order.vehicle as any).unitNumber || (order.vehicle as any).licensePlate || 'Unit #'}${(order.vehicle as any).driverName ? ' - ' + (order.vehicle as any).driverName : ''}`}>
+                                <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2" />
+                                <span className="truncate">
                                   <span className="font-semibold text-gray-900 dark:text-white">
                                     {(order.vehicle as any).unitNumber || (order.vehicle as any).licensePlate || 'Unit #'}
                                   </span>
                                   {(order.vehicle as any).driverName && (
-                                    <span className="text-gray-600 dark:text-gray-300 ml-1 font-normal">
+                                    <span className="text-gray-600 dark:text-gray-300 ml-2 font-normal">
                                       - {(order.vehicle as any).driverName}
                                     </span>
                                   )}
@@ -1120,21 +1120,21 @@ export default function Orders() {
                             )}
                           </div>
                         </td>
-                        <td className="px-2 py-2">
+                        <td className="px-3 py-2">
                           <div className="text-xs text-gray-900 dark:text-white">
-                            <div className="font-medium truncate" title={`Load: $${(order as any).loadPay ? (order as any).loadPay.toFixed(2) : '0.00'}`}>
-                              ${(order as any).loadPay ? (order as any).loadPay.toFixed(2) : '0.00'}
+                            <div className="font-medium">
+                              Load: ${(order as any).loadPay ? (order as any).loadPay.toFixed(2) : '0.00'}
                             </div>
-                            <div className="text-gray-500 dark:text-gray-400 truncate" title={`Driver: $${(order as any).driverPay ? (order as any).driverPay.toFixed(2) : '0.00'}`}>
-                              ${(order as any).driverPay ? (order as any).driverPay.toFixed(2) : '0.00'}
+                            <div className="text-gray-500 dark:text-gray-400">
+                              Driver: ${(order as any).driverPay ? (order as any).driverPay.toFixed(2) : '0.00'}
                             </div>
                           </div>
                         </td>
-                        <td className="px-2 py-2">
+                        <td className="px-3 py-2">
                           <div className="text-xs text-gray-900 dark:text-white">
                             <div className="flex items-start">
                               <MapPin className="h-3 w-3 text-gray-400 mr-1 mt-0.5 flex-shrink-0" />
-                              <span className="truncate" title={order.pickupAddress}>
+                              <span className="break-words" title={order.pickupAddress}>
                                 {order.pickupAddress}
                               </span>
                             </div>
@@ -1146,11 +1146,11 @@ export default function Orders() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-2 py-2">
+                        <td className="px-3 py-2">
                           <div className="text-xs text-gray-900 dark:text-white">
                             <div className="flex items-start">
                               <MapPin className="h-3 w-3 text-gray-400 mr-1 mt-0.5 flex-shrink-0" />
-                              <span className="truncate" title={order.deliveryAddress}>
+                              <span className="break-words" title={order.deliveryAddress}>
                                 {order.deliveryAddress}
                               </span>
                             </div>
@@ -1164,7 +1164,7 @@ export default function Orders() {
                             )}
                           </div>
                         </td>
-                        <td className="px-2 py-2">
+                        <td className="px-3 py-2">
                           <div className="flex items-center">
                             <StatusIcon className="h-3 w-3 mr-1" />
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
@@ -1172,11 +1172,11 @@ export default function Orders() {
                             </span>
                           </div>
                         </td>
-                        <td className="px-2 py-2 text-right text-xs font-medium">
+                        <td className="px-3 py-2 text-right text-xs font-medium">
                           <div className="flex items-center justify-end">
                             <div className="relative">
                               <button
-                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   const dropdown = e.currentTarget.nextElementSibling as HTMLElement
