@@ -139,7 +139,21 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
     reset
   } = useForm({
     resolver: zodResolver(orderSchema),
-    defaultValues: {
+    defaultValues: order ? {
+      customerId: order.customerId,
+      vehicleId: order.vehicleId || '',
+      driverId: order.driverId || '',
+      employeeId: (order as any).employeeId || '',
+      customerLoadNumber: (order as any).customerLoadNumber || '',
+      pickupAddress: order.pickupAddress,
+      deliveryAddress: order.deliveryAddress,
+      pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : '',
+      deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
+      miles: (order as any).miles ? (order as any).miles.toString() : '',
+      pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
+      weight: order.weight ? order.weight.toString() : '',
+      notes: order.notes || ''
+    } : {
       customerId: '',
       vehicleId: '',
       driverId: '',
@@ -152,65 +166,45 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
       miles: '',
       pieces: '',
       weight: '',
+      value: '',
       notes: '',
+      document: undefined,
       priority: 'NORMAL'
     }
   })
 
-  // Reset form values when order changes
+  // Reset form when order changes (for when same order is edited again)
   useEffect(() => {
     if (order && order.id) {
-      // Use setTimeout to ensure form is fully rendered
+      reset({
+        customerId: order.customerId || '',
+        vehicleId: order.vehicleId || '',
+        driverId: order.driverId || '',
+        employeeId: (order as any).employeeId || '',
+        customerLoadNumber: (order as any).customerLoadNumber || '',
+        pickupAddress: order.pickupAddress || '',
+        deliveryAddress: order.deliveryAddress || '',
+        pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+        deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
+        miles: (order as any).miles ? (order as any).miles.toString() : '',
+        pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
+        weight: order.weight ? order.weight.toString() : '',
+        notes: order.notes || ''
+      })
+      
       const timer = setTimeout(() => {
-        reset({
-          customerId: order.customerId || '',
-          vehicleId: order.vehicleId || '',
-          driverId: order.driverId || '',
-          employeeId: (order as any).employeeId || '',
-          customerLoadNumber: (order as any).customerLoadNumber || '',
-          pickupAddress: order.pickupAddress || '',
-          deliveryAddress: order.deliveryAddress || '',
-          pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-          deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
-          miles: (order as any).miles ? (order as any).miles.toString() : '',
-          pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
-          weight: order.weight ? order.weight.toString() : '',
-          notes: order.notes || '',
-          priority: (order as any).priority || 'NORMAL'
-        }, { keepDefaultValues: false })
+        const loadPayInput = document.querySelector('input[name="loadPay"]') as HTMLInputElement
+        const driverPayInput = document.querySelector('input[name="driverPay"]') as HTMLInputElement
         
-        // Set loadPay and driverPay after a short delay
-        setTimeout(() => {
-          const loadPayInput = document.querySelector('input[name="loadPay"]') as HTMLInputElement
-          const driverPayInput = document.querySelector('input[name="driverPay"]') as HTMLInputElement
-          
-          if (loadPayInput) {
-            loadPayInput.value = (order as any).loadPay ? (order as any).loadPay.toString() : ''
-          }
-          if (driverPayInput) {
-            driverPayInput.value = (order as any).driverPay ? (order as any).driverPay.toString() : ''
-          }
-        }, 50)
-      }, 0)
+        if (loadPayInput) {
+          loadPayInput.value = (order as any).loadPay ? (order as any).loadPay.toString() : ''
+        }
+        if (driverPayInput) {
+          driverPayInput.value = (order as any).driverPay ? (order as any).driverPay.toString() : ''
+        }
+      }, 100)
       
       return () => clearTimeout(timer)
-    } else {
-      reset({
-        customerId: '',
-        vehicleId: '',
-        driverId: '',
-        employeeId: '',
-        customerLoadNumber: '',
-        pickupAddress: '',
-        deliveryAddress: '',
-        pickupDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-        deliveryDate: '',
-        miles: '',
-        pieces: '',
-        weight: '',
-        notes: '',
-        priority: 'NORMAL'
-      }, { keepDefaultValues: false })
     }
   }, [order?.id, reset])
 
