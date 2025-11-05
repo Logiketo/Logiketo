@@ -1082,6 +1082,16 @@ export default function Orders() {
                     const StatusIcon = statusInfo.icon
                     // const priorityInfo = priorityConfig[order.priority]
                     
+                    // Debug: Log order data to see what we're getting
+                    if (order.vehicleId && (!order.vehicle || !(order.vehicle as any).unitNumber)) {
+                      console.log('Order vehicle data:', {
+                        orderId: order.id,
+                        vehicleId: order.vehicleId,
+                        vehicle: order.vehicle,
+                        driver: order.driver
+                      })
+                    }
+                    
                     return (
                       <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-3 py-2">
@@ -1099,32 +1109,47 @@ export default function Orders() {
                         </td>
                         <td className="px-3 py-2">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {order.vehicle ? (
-                              <div className="flex items-center">
-                                <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
-                                <span className="truncate">
-                                  <span className="font-semibold text-gray-900 dark:text-white">
-                                    {String((order.vehicle as any).unitNumber || (order.vehicle as any).licensePlate || 'Unit #')}
-                                  </span>
-                                  {((order.vehicle as any).driverName || (order.driver as any)?.firstName || (order.driver as any)?.lastName) && (
-                                    <span className="text-gray-600 dark:text-gray-300 ml-2 font-normal">
-                                      - {(order.vehicle as any).driverName || `${(order.driver as any)?.firstName || ''} ${(order.driver as any)?.lastName || ''}`.trim()}
+                            {(() => {
+                              const vehicle = order.vehicle as any
+                              const driver = order.driver as any
+                              const unitNumber = vehicle?.unitNumber
+                              const licensePlate = vehicle?.licensePlate
+                              const vehicleDriverName = vehicle?.driverName
+                              const driverName = driver ? `${driver.firstName || ''} ${driver.lastName || ''}`.trim() : ''
+                              
+                              const displayUnit = unitNumber || licensePlate || null
+                              const displayDriver = vehicleDriverName || driverName || null
+                              
+                              if (displayUnit || displayDriver || order.vehicleId) {
+                                return (
+                                  <div className="flex items-center">
+                                    <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
+                                    <span className="truncate">
+                                      {displayUnit ? (
+                                        <span className="font-semibold text-gray-900 dark:text-white">
+                                          {String(displayUnit)}
+                                        </span>
+                                      ) : (
+                                        <span className="font-semibold text-gray-500 dark:text-gray-400">
+                                          Unit #{order.vehicleId || 'N/A'}
+                                        </span>
+                                      )}
+                                      {displayDriver && (
+                                        <span className="text-gray-600 dark:text-gray-300 ml-2 font-normal">
+                                          - {displayDriver}
+                                        </span>
+                                      )}
                                     </span>
-                                  )}
-                                </span>
-                              </div>
-                            ) : order.driver ? (
-                              <div className="flex items-center">
-                                <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
-                                <span className="text-gray-500 dark:text-gray-400 font-normal">
-                                  {`${(order.driver as any)?.firstName || ''} ${(order.driver as any)?.lastName || ''}`.trim() || 'No unit'}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-gray-500 dark:text-gray-400 font-normal">
-                                No unit
-                              </span>
-                            )}
+                                  </div>
+                                )
+                              } else {
+                                return (
+                                  <span className="text-gray-500 dark:text-gray-400 font-normal">
+                                    No unit
+                                  </span>
+                                )
+                              }
+                            })()}
                           </div>
                         </td>
                         <td className="px-3 py-2">
