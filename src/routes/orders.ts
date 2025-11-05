@@ -226,7 +226,13 @@ router.get('/', authenticate, async (req, res) => {
       `) as Promise<any[]>
     ])
     
-    const orders = ordersRaw.map((row: any) => ({
+    const orders = ordersRaw.map((row: any) => {
+      // Debug: Log first few orders' vehicle data
+      if (ordersRaw.indexOf(row) < 3 && row.vehicle_id) {
+        console.log(`[BACKEND] Order ${row.orderNumber} - vehicle_id: ${row.vehicle_id}, unitNumber: ${row.vehicle_unitNumber} (type: ${typeof row.vehicle_unitNumber}), driverName: ${row.vehicle_driverName}, licensePlate: ${row.vehicle_licensePlate}`)
+      }
+      
+      return {
         id: row.id,
         orderNumber: row.orderNumber,
         customerId: row.customerId,
@@ -260,7 +266,7 @@ router.get('/', authenticate, async (req, res) => {
           make: row.vehicle_make,
           model: row.vehicle_model,
           licensePlate: row.vehicle_licensePlate,
-          unitNumber: row.vehicle_unitNumber != null ? String(row.vehicle_unitNumber) : null,
+          unitNumber: row.vehicle_unitNumber,
           driverName: row.vehicle_driverName
         } : null,
         driver: row.driver_id ? {
@@ -269,7 +275,8 @@ router.get('/', authenticate, async (req, res) => {
           lastName: row.driver_lastName,
           email: row.driver_email
         } : null
-    }))
+      }
+    })
     
     const total = totalRaw[0]?.count || 0
 

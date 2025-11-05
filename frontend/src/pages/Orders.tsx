@@ -408,8 +408,8 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
   console.log('OrderForm render - isLoading:', isLoading)
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50" style={{ overflowY: 'auto' }}>
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full my-8" style={{ maxHeight: 'calc(100vh - 4rem)' }}>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full my-auto">
         <div className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -882,6 +882,12 @@ export default function Orders() {
           priority: priorityFilter
         })
         console.log('✅ Orders query successful:', result)
+        // Log vehicle data for first few orders
+        if (result.data && result.data.length > 0) {
+          result.data.slice(0, 3).forEach((order: any) => {
+            console.log(`[FRONTEND] Order ${order.orderNumber} - vehicle:`, order.vehicle, 'vehicleId:', order.vehicleId)
+          })
+        }
         return result
       } catch (err: any) {
         console.error('❌ Orders query failed:', err)
@@ -1152,39 +1158,25 @@ export default function Orders() {
                         </td>
                         <td className="px-3 py-2">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {(() => {
-                              const vehicle = order.vehicle as any
-                              if (!vehicle) {
-                                return (
-                                  <span className="text-gray-500 dark:text-gray-400 font-normal">
-                                    No unit
+                            {order.vehicle ? (
+                              <div className="flex items-center">
+                                <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-gray-900 dark:text-white">
+                                    {(order.vehicle as any).unitNumber || (order.vehicle as any).licensePlate || 'N/A'}
                                   </span>
-                                )
-                              }
-                              
-                              const unitNum = vehicle.unitNumber
-                              const license = vehicle.licensePlate
-                              const driver = vehicle.driverName
-                              
-                              // Log for debugging
-                              console.log(`Order ${order.orderNumber} - unitNumber: "${unitNum}", licensePlate: "${license}", driverName: "${driver}"`)
-                              
-                              return (
-                                <div className="flex items-center">
-                                  <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
-                                  <div className="flex flex-col">
-                                    <span className="font-semibold text-gray-900 dark:text-white">
-                                      {unitNum || license || 'N/A'}
+                                  {(order.vehicle as any).driverName && (
+                                    <span className="text-xs text-gray-600 dark:text-gray-300 font-normal">
+                                      {(order.vehicle as any).driverName}
                                     </span>
-                                    {driver && (
-                                      <span className="text-xs text-gray-600 dark:text-gray-300 font-normal">
-                                        {driver}
-                                      </span>
-                                    )}
-                                  </div>
+                                  )}
                                 </div>
-                              )
-                            })()}
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 dark:text-gray-400 font-normal">
+                                No unit
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-3 py-2">
