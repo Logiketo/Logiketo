@@ -1068,10 +1068,10 @@ export default function Orders() {
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Delivery
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-24">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-24 sticky right-12 bg-gray-50 dark:bg-gray-700 z-10">
                       Status
                     </th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-24">
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-24 sticky right-0 bg-gray-50 dark:bg-gray-700 z-10">
                       Actions
                     </th>
                   </tr>
@@ -1164,7 +1164,7 @@ export default function Orders() {
                             )}
                           </div>
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-2 sticky right-12 bg-white dark:bg-gray-800 z-10">
                           <div className="flex items-center">
                             <StatusIcon className="h-3 w-3 mr-1" />
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
@@ -1172,7 +1172,7 @@ export default function Orders() {
                             </span>
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-right text-xs font-medium">
+                        <td className="px-3 py-2 text-right text-xs font-medium sticky right-0 bg-white dark:bg-gray-800 z-10">
                           <div className="flex items-center justify-end">
                             <div className="relative">
                               <button
