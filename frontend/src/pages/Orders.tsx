@@ -254,9 +254,11 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
       orderService.updateOrder(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] })
+      toast.success('Order updated successfully!')
       onSuccess()
     },
     onError: (error: any) => {
+      console.error('Update error:', error)
       toast.error(error.response?.data?.message || 'Failed to update order')
     }
   })
@@ -373,6 +375,8 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
       } else {
         await createMutation.mutateAsync(formData)
       }
+      
+      // Success - form will close via onSuccess callback in mutation
     } catch (error: any) {
       console.error('Form submission error:', error)
       console.error('Error response:', error.response?.data)
@@ -404,8 +408,8 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
   console.log('OrderForm render - isLoading:', isLoading)
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full my-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50" style={{ overflowY: 'auto' }}>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full my-8" style={{ maxHeight: 'calc(100vh - 4rem)' }}>
         <div className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -1131,11 +1135,6 @@ export default function Orders() {
                     const StatusIcon = statusInfo.icon
                     // const priorityInfo = priorityConfig[order.priority]
                     
-                    // Debug: Log vehicle data
-                    if (order.vehicleId) {
-                      console.log('Order', order.orderNumber, 'vehicle:', order.vehicle)
-                    }
-                    
                     return (
                       <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-3 py-2">
@@ -1153,25 +1152,39 @@ export default function Orders() {
                         </td>
                         <td className="px-3 py-2">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {order.vehicle ? (
-                              <div className="flex items-center">
-                                <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2" />
-                                <span className="truncate">
-                                  <span className="font-semibold text-gray-900 dark:text-white">
-                                    {(order.vehicle as any).unitNumber || (order.vehicle as any).licensePlate || 'Unit #'}
+                            {(() => {
+                              const vehicle = order.vehicle as any
+                              if (!vehicle) {
+                                return (
+                                  <span className="text-gray-500 dark:text-gray-400 font-normal">
+                                    No unit
                                   </span>
-                                  {(order.vehicle as any).driverName && (
-                                    <span className="text-gray-600 dark:text-gray-300 ml-2 font-normal">
-                                      - {(order.vehicle as any).driverName}
+                                )
+                              }
+                              
+                              const unitNum = vehicle.unitNumber
+                              const license = vehicle.licensePlate
+                              const driver = vehicle.driverName
+                              
+                              // Log for debugging
+                              console.log(`Order ${order.orderNumber} - unitNumber: "${unitNum}", licensePlate: "${license}", driverName: "${driver}"`)
+                              
+                              return (
+                                <div className="flex items-center">
+                                  <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
+                                  <div className="flex flex-col">
+                                    <span className="font-semibold text-gray-900 dark:text-white">
+                                      {unitNum || license || 'N/A'}
                                     </span>
-                                  )}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-gray-500 dark:text-gray-400 font-normal">
-                                No unit
-                              </span>
-                            )}
+                                    {driver && (
+                                      <span className="text-xs text-gray-600 dark:text-gray-300 font-normal">
+                                        {driver}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })()}
                           </div>
                         </td>
                         <td className="px-3 py-2">
