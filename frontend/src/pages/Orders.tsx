@@ -1082,11 +1082,6 @@ export default function Orders() {
                     const StatusIcon = statusInfo.icon
                     // const priorityInfo = priorityConfig[order.priority]
                     
-                    // Debug: Log the full order to see what data we have
-                    if (order.vehicleId) {
-                      console.log('Order:', order.id, 'Vehicle:', order.vehicle, 'VehicleId:', order.vehicleId)
-                    }
-                    
                     return (
                       <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-3 py-2">
@@ -1109,7 +1104,7 @@ export default function Orders() {
                                 <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2" />
                                 <span className="truncate">
                                   <span className="font-semibold text-gray-900 dark:text-white">
-                                    {(order.vehicle as any).unitNumber || (order.vehicle as any).licensePlate || 'Unit #'}
+                                    {(order.vehicle as any).unitNumber ? String((order.vehicle as any).unitNumber) : (order.vehicle as any).licensePlate || 'Unit #'}
                                   </span>
                                   {(order.vehicle as any).driverName && (
                                     <span className="text-gray-600 dark:text-gray-300 ml-2 font-normal">

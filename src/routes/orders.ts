@@ -259,9 +259,9 @@ router.get('/', authenticate, async (req, res) => {
         id: row.vehicle_id,
         make: row.vehicle_make,
         model: row.vehicle_model,
-        licensePlate: row.vehicle_licensePlate && row.vehicle_licensePlate.trim() ? row.vehicle_licensePlate : null,
-        unitNumber: row.vehicle_unitNumber && String(row.vehicle_unitNumber).trim() ? String(row.vehicle_unitNumber) : null,
-        driverName: row.vehicle_driverName && row.vehicle_driverName.trim() ? row.vehicle_driverName : null
+        licensePlate: row.vehicle_licensePlate || null,
+        unitNumber: row.vehicle_unitNumber ? String(row.vehicle_unitNumber) : null,
+        driverName: row.vehicle_driverName || null
       } : null,
       driver: row.driver_id ? {
         id: row.driver_id,
