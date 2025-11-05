@@ -898,11 +898,20 @@ export default function Orders() {
   return (
     <div className="space-y-6">
       <div>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Order Management</h1>
-          <p className="mt-1 text-xs sm:text-sm text-gray-600 dark:text-gray-300">
-            Track and manage all your logistics orders.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Order Management</h1>
+            <p className="mt-1 text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+              Track and manage all your logistics orders.
+            </p>
+          </div>
+          <button
+            onClick={handleAddNew}
+            className="btn-primary min-h-[44px] px-4 py-2 text-base sm:text-sm flex items-center justify-center whitespace-nowrap"
+          >
+            <Plus className="h-5 w-5 sm:h-4 sm:w-4 mr-2" />
+            Add New Order
+          </button>
         </div>
       </div>
 
