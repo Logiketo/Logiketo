@@ -226,50 +226,57 @@ router.get('/', authenticate, async (req, res) => {
       `) as Promise<any[]>
     ])
     
-    const orders = ordersRaw.map((row: any) => ({
-      id: row.id,
-      orderNumber: row.orderNumber,
-      customerId: row.customerId,
-      vehicleId: row.vehicleId,
-      driverId: row.driverId,
-      customerLoadNumber: row.customerLoadNumber,
-      pickupAddress: row.pickupAddress,
-      deliveryAddress: row.deliveryAddress,
-      pickupDate: row.pickupDate,
-      deliveryDate: row.deliveryDate,
-      status: row.status,
-      priority: row.priority,
-      description: row.description,
-      miles: row.miles ? parseFloat(row.miles) : null,
-      pieces: row.pieces ? parseInt(row.pieces) : null,
-      weight: row.weight ? parseFloat(row.weight) : null,
-      loadPay: row.loadPay ? parseFloat(row.loadPay) : null,
-      driverPay: row.driverPay ? parseFloat(row.driverPay) : null,
-      notes: row.notes,
-      document: row.document,
-      documents: row.documents,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      customer: row.customer_id ? {
-        id: row.customer_id,
-        name: row.customer_name,
-        email: row.customer_email
-      } : null,
-      vehicle: row.vehicle_id ? {
-        id: row.vehicle_id,
-        make: row.vehicle_make,
-        model: row.vehicle_model,
-        licensePlate: row.vehicle_licensePlate,
-        unitNumber: row.vehicle_unitNumber ? String(row.vehicle_unitNumber) : row.vehicle_unitNumber,
-        driverName: row.vehicle_driverName
-      } : null,
-      driver: row.driver_id ? {
-        id: row.driver_id,
-        firstName: row.driver_firstName,
-        lastName: row.driver_lastName,
-        email: row.driver_email
-      } : null
-    }))
+    const orders = ordersRaw.map((row: any) => {
+      // Debug: Log vehicle data for first few orders
+      if (ordersRaw.indexOf(row) < 3 && row.vehicleId) {
+        console.log(`Order ${row.orderNumber} - vehicleId: ${row.vehicleId}, vehicle_id: ${row.vehicle_id}, unitNumber: ${row.vehicle_unitNumber}, driverName: ${row.vehicle_driverName}`)
+      }
+      
+      return {
+        id: row.id,
+        orderNumber: row.orderNumber,
+        customerId: row.customerId,
+        vehicleId: row.vehicleId,
+        driverId: row.driverId,
+        customerLoadNumber: row.customerLoadNumber,
+        pickupAddress: row.pickupAddress,
+        deliveryAddress: row.deliveryAddress,
+        pickupDate: row.pickupDate,
+        deliveryDate: row.deliveryDate,
+        status: row.status,
+        priority: row.priority,
+        description: row.description,
+        miles: row.miles ? parseFloat(row.miles) : null,
+        pieces: row.pieces ? parseInt(row.pieces) : null,
+        weight: row.weight ? parseFloat(row.weight) : null,
+        loadPay: row.loadPay ? parseFloat(row.loadPay) : null,
+        driverPay: row.driverPay ? parseFloat(row.driverPay) : null,
+        notes: row.notes,
+        document: row.document,
+        documents: row.documents,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        customer: row.customer_id ? {
+          id: row.customer_id,
+          name: row.customer_name,
+          email: row.customer_email
+        } : null,
+        vehicle: row.vehicle_id ? {
+          id: row.vehicle_id,
+          make: row.vehicle_make,
+          model: row.vehicle_model,
+          licensePlate: row.vehicle_licensePlate,
+          unitNumber: row.vehicle_unitNumber != null ? String(row.vehicle_unitNumber) : null,
+          driverName: row.vehicle_driverName
+        } : null,
+        driver: row.driver_id ? {
+          id: row.driver_id,
+          firstName: row.driver_firstName,
+          lastName: row.driver_lastName,
+          email: row.driver_email
+        } : null
+      }
+    })
     
     const total = totalRaw[0]?.count || 0
 

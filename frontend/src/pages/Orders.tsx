@@ -173,9 +173,10 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
     }
   })
 
-  // Reset form when order changes (for when same order is edited again)
+  // Reset form when order changes - this runs on mount and when order.id changes
   useEffect(() => {
     if (order && order.id) {
+      // Reset immediately
       reset({
         customerId: order.customerId || '',
         vehicleId: order.vehicleId || '',
@@ -190,9 +191,32 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
         pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
         weight: order.weight ? order.weight.toString() : '',
         notes: order.notes || ''
-      })
-      
-      const timer = setTimeout(() => {
+      }, { keepDefaultValues: false })
+    } else {
+      // Reset to empty for new order
+      reset({
+        customerId: '',
+        vehicleId: '',
+        driverId: '',
+        employeeId: '',
+        customerLoadNumber: '',
+        pickupAddress: '',
+        deliveryAddress: '',
+        pickupDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+        deliveryDate: '',
+        miles: '',
+        pieces: '',
+        weight: '',
+        notes: ''
+      }, { keepDefaultValues: false })
+    }
+  }, [order?.id, reset])
+
+  // Populate loadPay and driverPay fields (these are not in the form schema)
+  useEffect(() => {
+    if (order) {
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
         const loadPayInput = document.querySelector('input[name="loadPay"]') as HTMLInputElement
         const driverPayInput = document.querySelector('input[name="driverPay"]') as HTMLInputElement
         
@@ -202,11 +226,9 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
         if (driverPayInput) {
           driverPayInput.value = (order as any).driverPay ? (order as any).driverPay.toString() : ''
         }
-      }, 100)
-      
-      return () => clearTimeout(timer)
+      })
     }
-  }, [order?.id, reset])
+  }, [order])
 
 
 
@@ -1121,31 +1143,45 @@ export default function Orders() {
                         </td>
                         <td className="px-3 py-2">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {order.vehicle ? (
-                              <div className="flex items-center">
-                                <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2" />
-                                <span className="truncate">
-                                  <span className="font-semibold text-gray-900 dark:text-white">
-                                    {(() => {
-                                      const vehicle = order.vehicle as any
-                                      console.log('Vehicle data for order', order.id, ':', vehicle, 'unitNumber:', vehicle?.unitNumber, 'licensePlate:', vehicle?.licensePlate, 'driverName:', vehicle?.driverName)
-                                      const unitNum = vehicle?.unitNumber != null ? String(vehicle.unitNumber) : null
-                                      const license = vehicle?.licensePlate || null
-                                      return unitNum || license || 'Unit #'
-                                    })()}
-                                  </span>
-                                  {(order.vehicle as any).driverName && (
-                                    <span className="text-gray-600 dark:text-gray-300 ml-2 font-normal">
-                                      - {(order.vehicle as any).driverName}
-                                    </span>
-                                  )}
+                            {(() => {
+                              const vehicle = order.vehicle as any
+                              const vehicleId = order.vehicleId
+                              
+                              // Log for debugging
+                              if (vehicleId) {
+                                console.log(`Order ${order.id} - vehicleId: ${vehicleId}, vehicle:`, vehicle, 'unitNumber:', vehicle?.unitNumber, 'driverName:', vehicle?.driverName)
+                              }
+                              
+                              if (vehicle) {
+                                const unitNum = vehicle.unitNumber != null && vehicle.unitNumber !== '' ? String(vehicle.unitNumber) : null
+                                const license = vehicle.licensePlate || null
+                                const driver = vehicle.driverName || null
+                                
+                                if (unitNum || license || driver) {
+                                  return (
+                                    <div className="flex items-center">
+                                      <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2" />
+                                      <span className="truncate">
+                                        <span className="font-semibold text-gray-900 dark:text-white">
+                                          {unitNum || license || 'Unit #'}
+                                        </span>
+                                        {driver && (
+                                          <span className="text-gray-600 dark:text-gray-300 ml-2 font-normal">
+                                            - {driver}
+                                          </span>
+                                        )}
+                                      </span>
+                                    </div>
+                                  )
+                                }
+                              }
+                              
+                              return (
+                                <span className="text-gray-500 dark:text-gray-400 font-normal">
+                                  {vehicleId ? `Vehicle ID: ${vehicleId}` : 'No unit'}
                                 </span>
-                              </div>
-                            ) : (
-                              <span className="text-gray-500 dark:text-gray-400 font-normal">
-                                No unit
-                              </span>
-                            )}
+                              )
+                            })()}
                           </div>
                         </td>
                         <td className="px-3 py-2">
