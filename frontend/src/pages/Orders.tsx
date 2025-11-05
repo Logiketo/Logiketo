@@ -915,7 +915,7 @@ export default function Orders() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" style={{ width: 'calc(100vw - 256px)', maxWidth: 'none', marginLeft: 'calc((100vw - 100%) / -2)', marginRight: 'calc((100vw - 100%) / -2)' }}>
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden -mx-4 sm:-mx-6 lg:-mx-8" style={{ width: 'calc(100vw - 256px)', maxWidth: 'none' }}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <div className="relative flex-1 sm:flex-none">
