@@ -131,42 +131,15 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
     }
   }, [order])
 
-  // Populate loadPay and driverPay fields when editing
-  useEffect(() => {
-    if (order) {
-      const loadPayInput = document.querySelector('input[name="loadPay"]') as HTMLInputElement
-      const driverPayInput = document.querySelector('input[name="driverPay"]') as HTMLInputElement
-      
-      if (loadPayInput && driverPayInput) {
-        // Use the new field names from the database
-        loadPayInput.value = (order as any).loadPay ? (order as any).loadPay.toString() : ''
-        driverPayInput.value = (order as any).driverPay ? (order as any).driverPay.toString() : ''
-      }
-    }
-  }, [order])
-
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setValue
+    setValue,
+    reset
   } = useForm({
     resolver: zodResolver(orderSchema),
-    defaultValues: order ? {
-      customerId: order.customerId,
-      vehicleId: order.vehicleId || '',
-      driverId: order.driverId || '',
-      employeeId: (order as any).employeeId || '',
-      customerLoadNumber: (order as any).customerLoadNumber || '',
-      pickupAddress: order.pickupAddress,
-      deliveryAddress: order.deliveryAddress,
-      pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : '',
-      deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
-      miles: (order as any).miles ? (order as any).miles.toString() : '',
-      pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
-      weight: order.weight ? order.weight.toString() : '',
-      notes: order.notes || ''
-    } : {
+    defaultValues: {
       customerId: '',
       vehicleId: '',
       driverId: '',
@@ -179,12 +152,62 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
       miles: '',
       pieces: '',
       weight: '',
-      value: '',
       notes: '',
-      document: undefined,
       priority: 'NORMAL'
     }
   })
+
+  // Reset form values when order changes
+  useEffect(() => {
+    if (order) {
+      reset({
+        customerId: order.customerId || '',
+        vehicleId: order.vehicleId || '',
+        driverId: order.driverId || '',
+        employeeId: (order as any).employeeId || '',
+        customerLoadNumber: (order as any).customerLoadNumber || '',
+        pickupAddress: order.pickupAddress || '',
+        deliveryAddress: order.deliveryAddress || '',
+        pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+        deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
+        miles: (order as any).miles ? (order as any).miles.toString() : '',
+        pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
+        weight: order.weight ? order.weight.toString() : '',
+        notes: order.notes || '',
+        priority: (order as any).priority || 'NORMAL'
+      })
+      
+      // Set loadPay and driverPay
+      setTimeout(() => {
+        const loadPayInput = document.querySelector('input[name="loadPay"]') as HTMLInputElement
+        const driverPayInput = document.querySelector('input[name="driverPay"]') as HTMLInputElement
+        
+        if (loadPayInput) {
+          loadPayInput.value = (order as any).loadPay ? (order as any).loadPay.toString() : ''
+        }
+        if (driverPayInput) {
+          driverPayInput.value = (order as any).driverPay ? (order as any).driverPay.toString() : ''
+        }
+      }, 100)
+    } else {
+      reset({
+        customerId: '',
+        vehicleId: '',
+        driverId: '',
+        employeeId: '',
+        customerLoadNumber: '',
+        pickupAddress: '',
+        deliveryAddress: '',
+        pickupDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+        deliveryDate: '',
+        miles: '',
+        pieces: '',
+        weight: '',
+        notes: '',
+        priority: 'NORMAL'
+      })
+    }
+  }, [order, reset])
 
 
 
@@ -1106,8 +1129,10 @@ export default function Orders() {
                                   <span className="font-semibold text-gray-900 dark:text-white">
                                     {(() => {
                                       const vehicle = order.vehicle as any
-                                      console.log('Vehicle data for order', order.id, ':', vehicle)
-                                      return vehicle.unitNumber || vehicle.licensePlate || 'Unit #'
+                                      console.log('Vehicle data for order', order.id, ':', vehicle, 'unitNumber:', vehicle?.unitNumber, 'licensePlate:', vehicle?.licensePlate, 'driverName:', vehicle?.driverName)
+                                      const unitNum = vehicle?.unitNumber != null ? String(vehicle.unitNumber) : null
+                                      const license = vehicle?.licensePlate || null
+                                      return unitNum || license || 'Unit #'
                                     })()}
                                   </span>
                                   {(order.vehicle as any).driverName && (
