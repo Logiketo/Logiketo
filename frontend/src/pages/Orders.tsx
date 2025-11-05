@@ -173,44 +173,49 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
     }
   })
 
-  // Reset form when order changes - this runs on mount and when order.id changes
+  // Reset form only when order.id changes (not on every render)
+  const prevOrderIdRef = useRef<string | undefined>()
   useEffect(() => {
-    if (order && order.id) {
-      // Reset immediately
-      reset({
-        customerId: order.customerId || '',
-        vehicleId: order.vehicleId || '',
-        driverId: order.driverId || '',
-        employeeId: (order as any).employeeId || '',
-        customerLoadNumber: (order as any).customerLoadNumber || '',
-        pickupAddress: order.pickupAddress || '',
-        deliveryAddress: order.deliveryAddress || '',
-        pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-        deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
-        miles: (order as any).miles ? (order as any).miles.toString() : '',
-        pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
-        weight: order.weight ? order.weight.toString() : '',
-        notes: order.notes || ''
-      }, { keepDefaultValues: false })
-    } else {
-      // Reset to empty for new order
-      reset({
-        customerId: '',
-        vehicleId: '',
-        driverId: '',
-        employeeId: '',
-        customerLoadNumber: '',
-        pickupAddress: '',
-        deliveryAddress: '',
-        pickupDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-        deliveryDate: '',
-        miles: '',
-        pieces: '',
-        weight: '',
-        notes: ''
-      }, { keepDefaultValues: false })
+    const currentOrderId = order?.id
+    // Only reset if order ID actually changed
+    if (prevOrderIdRef.current !== currentOrderId) {
+      prevOrderIdRef.current = currentOrderId
+      
+      if (order && order.id) {
+        reset({
+          customerId: order.customerId || '',
+          vehicleId: order.vehicleId || '',
+          driverId: order.driverId || '',
+          employeeId: (order as any).employeeId || '',
+          customerLoadNumber: (order as any).customerLoadNumber || '',
+          pickupAddress: order.pickupAddress || '',
+          deliveryAddress: order.deliveryAddress || '',
+          pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+          deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
+          miles: (order as any).miles ? (order as any).miles.toString() : '',
+          pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
+          weight: order.weight ? order.weight.toString() : '',
+          notes: order.notes || ''
+        })
+      } else {
+        reset({
+          customerId: '',
+          vehicleId: '',
+          driverId: '',
+          employeeId: '',
+          customerLoadNumber: '',
+          pickupAddress: '',
+          deliveryAddress: '',
+          pickupDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+          deliveryDate: '',
+          miles: '',
+          pieces: '',
+          weight: '',
+          notes: ''
+        })
+      }
     }
-  }, [order?.id, reset])
+  }, [order?.id, order, reset])
 
   // Populate loadPay and driverPay fields (these are not in the form schema)
   useEffect(() => {
@@ -399,8 +404,8 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
   console.log('OrderForm render - isLoading:', isLoading)
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full my-auto">
         <div className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -1125,6 +1130,11 @@ export default function Orders() {
                     const statusInfo = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.PENDING
                     const StatusIcon = statusInfo.icon
                     // const priorityInfo = priorityConfig[order.priority]
+                    
+                    // Debug: Log vehicle data
+                    if (order.vehicleId) {
+                      console.log('Order', order.orderNumber, 'vehicle:', order.vehicle)
+                    }
                     
                     return (
                       <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
