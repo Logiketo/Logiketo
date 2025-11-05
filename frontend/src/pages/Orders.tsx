@@ -1104,7 +1104,11 @@ export default function Orders() {
                                 <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2" />
                                 <span className="truncate">
                                   <span className="font-semibold text-gray-900 dark:text-white">
-                                    {(order.vehicle as any).unitNumber ? String((order.vehicle as any).unitNumber) : (order.vehicle as any).licensePlate || 'Unit #'}
+                                    {(() => {
+                                      const vehicle = order.vehicle as any
+                                      console.log('Vehicle data for order', order.id, ':', vehicle)
+                                      return vehicle.unitNumber || vehicle.licensePlate || 'Unit #'
+                                    })()}
                                   </span>
                                   {(order.vehicle as any).driverName && (
                                     <span className="text-gray-600 dark:text-gray-300 ml-2 font-normal">

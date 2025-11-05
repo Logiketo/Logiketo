@@ -203,9 +203,9 @@ router.get('/', authenticate, async (req, res) => {
           v.id as vehicle_id,
           v.make as vehicle_make,
           v.model as vehicle_model,
-          COALESCE(v."licensePlate", '') as vehicle_licensePlate,
-          COALESCE(v."unitNumber", '') as vehicle_unitNumber,
-          COALESCE(v."driverName", '') as vehicle_driverName,
+          v."licensePlate" as vehicle_licensePlate,
+          v."unitNumber" as vehicle_unitNumber,
+          v."driverName" as vehicle_driverName,
           u.id as driver_id,
           u."firstName" as driver_firstName,
           u."lastName" as driver_lastName,
@@ -259,9 +259,9 @@ router.get('/', authenticate, async (req, res) => {
         id: row.vehicle_id,
         make: row.vehicle_make,
         model: row.vehicle_model,
-        licensePlate: row.vehicle_licensePlate || null,
-        unitNumber: row.vehicle_unitNumber ? String(row.vehicle_unitNumber) : null,
-        driverName: row.vehicle_driverName || null
+        licensePlate: row.vehicle_licensePlate,
+        unitNumber: row.vehicle_unitNumber ? String(row.vehicle_unitNumber) : row.vehicle_unitNumber,
+        driverName: row.vehicle_driverName
       } : null,
       driver: row.driver_id ? {
         id: row.driver_id,
