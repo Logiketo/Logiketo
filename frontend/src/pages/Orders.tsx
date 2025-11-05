@@ -91,7 +91,7 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
 
   const { data: vehiclesData } = useQuery({
     queryKey: ['vehicles'],
-    queryFn: () => vehicleService.getVehicles({ limit: 100, status: 'AVAILABLE' })
+    queryFn: () => vehicleService.getVehicles({ limit: 100 })
   })
 
   const { data: employeesData } = useQuery({
