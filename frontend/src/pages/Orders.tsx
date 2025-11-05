@@ -1099,25 +1099,56 @@ export default function Orders() {
                         </td>
                         <td className="px-3 py-2">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {order.vehicle ? (
-                              <div className="flex items-center">
-                                <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2" />
-                                <span className="truncate">
-                                  <span className="font-semibold text-gray-900 dark:text-white">
-                                    {(order.vehicle as any).unitNumber || (order.vehicle as any).licensePlate || 'Unit #'}
-                                  </span>
-                                  {(order.vehicle as any).driverName && (
-                                    <span className="text-gray-600 dark:text-gray-300 ml-2 font-normal">
-                                      - {(order.vehicle as any).driverName}
+                            {(() => {
+                              const vehicle = order.vehicle as any
+                              const vehicleId = order.vehicleId
+                              
+                              // Debug log
+                              if (vehicleId && (!vehicle || !vehicle.unitNumber)) {
+                                console.log('Order vehicle debug:', {
+                                  orderId: order.id,
+                                  vehicleId: vehicleId,
+                                  vehicle: vehicle,
+                                  unitNumber: vehicle?.unitNumber,
+                                  licensePlate: vehicle?.licensePlate,
+                                  driverName: vehicle?.driverName
+                                })
+                              }
+                              
+                              if (vehicle && (vehicle.unitNumber || vehicle.licensePlate || vehicle.driverName)) {
+                                return (
+                                  <div className="flex items-center">
+                                    <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2" />
+                                    <span className="truncate">
+                                      <span className="font-semibold text-gray-900 dark:text-white">
+                                        {vehicle.unitNumber || vehicle.licensePlate || 'Unit #'}
+                                      </span>
+                                      {vehicle.driverName && (
+                                        <span className="text-gray-600 dark:text-gray-300 ml-2 font-normal">
+                                          - {vehicle.driverName}
+                                        </span>
+                                      )}
                                     </span>
-                                  )}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-gray-500 dark:text-gray-400 font-normal">
-                                No unit
-                              </span>
-                            )}
+                                  </div>
+                                )
+                              } else if (vehicleId) {
+                                // Vehicle ID exists but vehicle data is missing - show the ID
+                                return (
+                                  <div className="flex items-center">
+                                    <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2" />
+                                    <span className="text-gray-500 dark:text-gray-400 font-normal">
+                                      Vehicle ID: {vehicleId}
+                                    </span>
+                                  </div>
+                                )
+                              } else {
+                                return (
+                                  <span className="text-gray-500 dark:text-gray-400 font-normal">
+                                    No unit
+                                  </span>
+                                )
+                              }
+                            })()}
                           </div>
                         </td>
                         <td className="px-3 py-2">
