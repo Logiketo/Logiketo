@@ -885,7 +885,14 @@ export default function Orders() {
         // Log vehicle data for first few orders
         if (result.data && result.data.length > 0) {
           result.data.slice(0, 3).forEach((order: any) => {
-            console.log(`[FRONTEND] Order ${order.orderNumber} - vehicle:`, order.vehicle, 'vehicleId:', order.vehicleId)
+            console.log(`[FRONTEND LIST] Order ${order.orderNumber}:`, {
+              vehicleId: order.vehicleId,
+              vehicle: order.vehicle,
+              vehicle_unitNumber: order.vehicle?.unitNumber,
+              vehicle_driverName: order.vehicle?.driverName,
+              vehicle_licensePlate: order.vehicle?.licensePlate,
+              full_vehicle_object: JSON.stringify(order.vehicle, null, 2)
+            })
           })
         }
         return result
@@ -932,9 +939,36 @@ export default function Orders() {
     }
   }
 
-  const handleEdit = (order: Order) => {
-    setSelectedOrder(order)
-    setShowForm(true)
+  const handleEdit = async (order: Order) => {
+    try {
+      console.log('[FRONTEND EDIT] Opening order for edit:', {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        vehicleId: order.vehicleId,
+        vehicle: order.vehicle
+      })
+      
+      // Fetch full order data to ensure we have complete vehicle information
+      const fullOrderData = await orderService.getOrder(order.id)
+      
+      console.log('[FRONTEND EDIT] Full order data received:', {
+        orderId: fullOrderData.data.id,
+        orderNumber: fullOrderData.data.orderNumber,
+        vehicleId: fullOrderData.data.vehicleId,
+        vehicle: fullOrderData.data.vehicle,
+        vehicle_unitNumber: fullOrderData.data.vehicle?.unitNumber,
+        vehicle_driverName: fullOrderData.data.vehicle?.driverName
+      })
+      
+      setSelectedOrder(fullOrderData.data)
+      setShowForm(true)
+    } catch (error: any) {
+      console.error('[FRONTEND EDIT] Failed to fetch order details:', error)
+      toast.error('Failed to load order details')
+      // Fallback to using the order from list
+      setSelectedOrder(order)
+      setShowForm(true)
+    }
   }
 
   const handleAddNew = () => {
@@ -1158,25 +1192,68 @@ export default function Orders() {
                         </td>
                         <td className="px-3 py-2">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {order.vehicle ? (
-                              <div className="flex items-center">
-                                <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
-                                <div className="flex flex-col">
-                                  <span className="font-semibold text-gray-900 dark:text-white">
-                                    {order.vehicle.unitNumber ? String(order.vehicle.unitNumber) : (order.vehicle.licensePlate || 'N/A')}
-                                  </span>
-                                  {order.vehicle.driverName && (
-                                    <span className="text-xs text-gray-600 dark:text-gray-300 font-normal">
-                                      {order.vehicle.driverName}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-gray-500 dark:text-gray-400 font-normal">
-                                {order.vehicleId ? `Vehicle ID: ${order.vehicleId}` : 'No unit'}
-                              </span>
-                            )}
+                            {(() => {
+                              // Debug logging for first few orders
+                              if (orders.indexOf(order) < 3) {
+                                console.log(`[UNIT/DRIVER DEBUG] Order ${order.orderNumber}:`, {
+                                  vehicleId: order.vehicleId,
+                                  vehicle: order.vehicle,
+                                  unitNumber: order.vehicle?.unitNumber,
+                                  driverName: order.vehicle?.driverName,
+                                  licensePlate: order.vehicle?.licensePlate,
+                                  fullOrder: order
+                                })
+                              }
+                              
+                              // Check if vehicle exists and has data
+                              const vehicle = order.vehicle
+                              if (vehicle && (vehicle.unitNumber || vehicle.driverName || vehicle.licensePlate)) {
+                                // Get unit number - prefer unitNumber, fallback to licensePlate
+                                const unitNumber = vehicle.unitNumber 
+                                  ? String(vehicle.unitNumber).trim() 
+                                  : (vehicle.licensePlate ? String(vehicle.licensePlate).trim() : '');
+                                
+                                // Get driver name
+                                const driverName = vehicle.driverName ? String(vehicle.driverName).trim() : '';
+                                
+                                // Format: "1 Ilia Topuria" or "1 - Ilia Topuria" if both exist
+                                if (unitNumber && driverName) {
+                                  return (
+                                    <div className="flex items-center">
+                                      <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
+                                      <span className="font-semibold text-gray-900 dark:text-white">
+                                        {`${unitNumber} ${driverName}`}
+                                      </span>
+                                    </div>
+                                  );
+                                } else if (unitNumber) {
+                                  return (
+                                    <div className="flex items-center">
+                                      <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
+                                      <span className="font-semibold text-gray-900 dark:text-white">
+                                        {unitNumber}
+                                      </span>
+                                    </div>
+                                  );
+                                } else if (driverName) {
+                                  return (
+                                    <div className="flex items-center">
+                                      <Truck className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
+                                      <span className="font-semibold text-gray-900 dark:text-white">
+                                        {driverName}
+                                      </span>
+                                    </div>
+                                  );
+                                }
+                              }
+                              
+                              // Fallback: show N/A
+                              return (
+                                <span className="text-gray-500 dark:text-gray-400 font-normal">
+                                  N/A
+                                </span>
+                              );
+                            })()}
                           </div>
                         </td>
                         <td className="px-3 py-2">

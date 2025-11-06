@@ -41,14 +41,14 @@ const generateOrderNumber = async (): Promise<string> => {
   
   while (attempts < maxAttempts) {
     // Find the highest order number that is a simple number (1, 2, 3, etc.)
-    const allOrders = await prisma.order.findMany({
-      select: {
-        orderNumber: true
-      },
-      orderBy: {
-        orderNumber: 'desc'
-      }
-    })
+    // Use raw SQL to avoid enum type issues
+    const allOrdersRaw = await prisma.$queryRawUnsafe(`
+      SELECT "orderNumber" 
+      FROM orders 
+      ORDER BY "orderNumber" DESC
+    `) as Array<{ orderNumber: string }>
+    
+    const allOrders = allOrdersRaw.map((row) => ({ orderNumber: row.orderNumber }))
     
     // Filter for simple numeric order numbers only
     const numericOrders = allOrders.filter((order: any) => {
@@ -125,51 +125,57 @@ router.get('/', authenticate, async (req, res) => {
       
       // Search filter (multiple fields)
       if (search) {
+        const searchStr = String(search)
         whereConditions.push(`(
-          LOWER(o."orderNumber") LIKE LOWER('%${search.replace(/'/g, "''")}%') OR
-          LOWER(o."pickupAddress") LIKE LOWER('%${search.replace(/'/g, "''")}%') OR
-          LOWER(o."deliveryAddress") LIKE LOWER('%${search.replace(/'/g, "''")}%') OR
-          LOWER(o.description) LIKE LOWER('%${search.replace(/'/g, "''")}%') OR
-          LOWER(c.name) LIKE LOWER('%${search.replace(/'/g, "''")}%')
+          LOWER(o."orderNumber") LIKE LOWER('%${searchStr.replace(/'/g, "''")}%') OR
+          LOWER(o."pickupAddress") LIKE LOWER('%${searchStr.replace(/'/g, "''")}%') OR
+          LOWER(o."deliveryAddress") LIKE LOWER('%${searchStr.replace(/'/g, "''")}%') OR
+          LOWER(o.description) LIKE LOWER('%${searchStr.replace(/'/g, "''")}%') OR
+          LOWER(c.name) LIKE LOWER('%${searchStr.replace(/'/g, "''")}%')
         )`)
       }
       
       if (orderNumber) {
-        whereConditions.push(`LOWER(o."orderNumber") LIKE LOWER('%${orderNumber.replace(/'/g, "''")}%')`)
+        const orderNumberStr = String(orderNumber)
+        whereConditions.push(`LOWER(o."orderNumber") LIKE LOWER('%${orderNumberStr.replace(/'/g, "''")}%')`)
       }
       
       if (customerLoad) {
-        whereConditions.push(`(LOWER(c.name) LIKE LOWER('%${customerLoad.replace(/'/g, "''")}%') OR LOWER(o."customerLoadNumber") LIKE LOWER('%${customerLoad.replace(/'/g, "''")}%'))`)
+        const customerLoadStr = String(customerLoad)
+        whereConditions.push(`(LOWER(c.name) LIKE LOWER('%${customerLoadStr.replace(/'/g, "''")}%') OR LOWER(o."customerLoadNumber") LIKE LOWER('%${customerLoadStr.replace(/'/g, "''")}%'))`)
       }
       
       if (unitDriver) {
+        const unitDriverStr = String(unitDriver)
         whereConditions.push(`(
-          LOWER(v."unitNumber") LIKE LOWER('%${unitDriver.replace(/'/g, "''")}%') OR
-          LOWER(v."driverName") LIKE LOWER('%${unitDriver.replace(/'/g, "''")}%') OR
-          LOWER(u."firstName") LIKE LOWER('%${unitDriver.replace(/'/g, "''")}%') OR
-          LOWER(u."lastName") LIKE LOWER('%${unitDriver.replace(/'/g, "''")}%')
+          LOWER(v."unitNumber") LIKE LOWER('%${unitDriverStr.replace(/'/g, "''")}%') OR
+          LOWER(v."driverName") LIKE LOWER('%${unitDriverStr.replace(/'/g, "''")}%') OR
+          LOWER(u."firstName") LIKE LOWER('%${unitDriverStr.replace(/'/g, "''")}%') OR
+          LOWER(u."lastName") LIKE LOWER('%${unitDriverStr.replace(/'/g, "''")}%')
         )`)
       }
       
       if (status) {
         // Handle status filtering in raw SQL
-        const statusArray = status.split(',').map(s => s.trim().replace(/'/g, "''"))
-        const statusConditions = statusArray.map(s => `CAST(o.status AS TEXT) = '${s}'`).join(' OR ')
+        const statusStr = String(status)
+        const statusArray = statusStr.split(',').map((s: string) => s.trim().replace(/'/g, "''"))
+        const statusConditions = statusArray.map((s: string) => `CAST(o.status AS TEXT) = '${s}'`).join(' OR ')
         whereConditions.push(`(${statusConditions})`)
       }
       
       if (priority) {
-        const priorityArray = priority.split(',').map(p => p.trim().replace(/'/g, "''"))
-        const priorityConditions = priorityArray.map(p => `CAST(o.priority AS TEXT) = '${p}'`).join(' OR ')
+        const priorityStr = String(priority)
+        const priorityArray = priorityStr.split(',').map((p: string) => p.trim().replace(/'/g, "''"))
+        const priorityConditions = priorityArray.map((p: string) => `CAST(o.priority AS TEXT) = '${p}'`).join(' OR ')
         whereConditions.push(`(${priorityConditions})`)
       }
       
       if (customerId) {
-        whereConditions.push(`o."customerId" = '${customerId.replace(/'/g, "''")}'`)
+        whereConditions.push(`o."customerId" = '${String(customerId).replace(/'/g, "''")}'`)
       }
       
       if (vehicleId) {
-        whereConditions.push(`o."vehicleId" = '${vehicleId.replace(/'/g, "''")}'`)
+        whereConditions.push(`o."vehicleId" = '${String(vehicleId).replace(/'/g, "''")}'`)
       }
       
       const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
@@ -177,7 +183,8 @@ router.get('/', authenticate, async (req, res) => {
       console.log('Raw SQL WHERE clause:', whereClause)
       
       // Use raw query with safe integer interpolation (limitNum and skip are validated integers)
-      const rawOrders = await prisma.$queryRawUnsafe(`
+      // Build the SQL query with explicit column selection
+      const sqlQuery = `
         SELECT 
           o.id,
           o."orderNumber",
@@ -209,8 +216,8 @@ router.get('/', authenticate, async (req, res) => {
           v.make as vehicle_make,
           v.model as vehicle_model,
           v."licensePlate" as vehicle_licensePlate,
-          v."unitNumber" as vehicle_unitNumber,
-          v."driverName" as vehicle_driverName,
+          COALESCE(v."unitNumber", '') as vehicle_unitNumber,
+          COALESCE(v."driverName", '') as vehicle_driverName,
           u.id as driver_id,
           u."firstName" as driver_firstName,
           u."lastName" as driver_lastName,
@@ -222,55 +229,129 @@ router.get('/', authenticate, async (req, res) => {
         ${whereClause}
         ORDER BY o."createdAt" DESC
         LIMIT ${limitNum} OFFSET ${skip}
-      `) as any[]
+      `
+      
+      console.log('[SQL QUERY] Executing:', sqlQuery.substring(0, 500) + '...')
+      
+      const rawOrders = await prisma.$queryRawUnsafe(sqlQuery) as any[]
       
       console.log(`Raw query returned ${rawOrders.length} rows`)
       
+      // Diagnostic: Log the actual structure of the first row to see what columns are returned
+      if (rawOrders.length > 0) {
+        console.log(`[DIAGNOSTIC] First row keys:`, Object.keys(rawOrders[0]))
+        console.log(`[DIAGNOSTIC] First row vehicle-related fields:`, {
+          vehicleId: rawOrders[0].vehicleId,
+          vehicle_id: rawOrders[0].vehicle_id,
+          vehicle_unitNumber: rawOrders[0].vehicle_unitNumber,
+          'vehicle_unitnumber': rawOrders[0].vehicle_unitnumber, // lowercase
+          vehicle_driverName: rawOrders[0].vehicle_driverName,
+          'vehicle_drivername': rawOrders[0].vehicle_drivername, // lowercase
+          vehicle_licensePlate: rawOrders[0].vehicle_licensePlate,
+          'vehicle_licenseplate': rawOrders[0].vehicle_licenseplate, // lowercase
+          vehicle_make: rawOrders[0].vehicle_make,
+          vehicle_model: rawOrders[0].vehicle_model,
+          full_row: JSON.stringify(rawOrders[0], null, 2)
+        })
+      }
+      
+      // Diagnostic: Check first order's vehicle data directly from database
+      if (rawOrders.length > 0 && rawOrders[0].vehicleId) {
+        try {
+          const testVehicle = await prisma.$queryRawUnsafe(`
+            SELECT id, "unitNumber", "driverName", "licensePlate", make, model
+            FROM vehicles
+            WHERE id = '${rawOrders[0].vehicleId.replace(/'/g, "''")}'
+          `) as any[]
+          console.log(`[DIAGNOSTIC] Direct vehicle query for order ${rawOrders[0].orderNumber}:`, testVehicle)
+        } catch (diagError: any) {
+          console.error('[DIAGNOSTIC] Error querying vehicle:', diagError.message)
+        }
+      }
+      
       // Transform raw results to match expected format
-      orders = rawOrders.map((row: any) => ({
-        id: row.id,
-        orderNumber: row.orderNumber,
-        customerId: row.customerId,
-        vehicleId: row.vehicleId,
-        driverId: row.driverId,
-        customerLoadNumber: row.customerLoadNumber,
-        pickupAddress: row.pickupAddress,
-        deliveryAddress: row.deliveryAddress,
-        pickupDate: row.pickupDate,
-        deliveryDate: row.deliveryDate,
-        status: row.status,
-        priority: row.priority,
-        description: row.description,
-        miles: row.miles ? parseFloat(row.miles) : null,
-        pieces: row.pieces ? parseInt(row.pieces) : null,
-        weight: row.weight ? parseFloat(row.weight) : null,
-        loadPay: row.loadPay ? parseFloat(row.loadPay) : null,
-        driverPay: row.driverPay ? parseFloat(row.driverPay) : null,
-        notes: row.notes,
-        document: row.document,
-        documents: row.documents,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-        customer: row.customer_id ? {
-          id: row.customer_id,
-          name: row.customer_name,
-          email: row.customer_email
-        } : null,
-        vehicle: row.vehicle_id ? {
+      orders = rawOrders.map((row: any) => {
+        // Helper to safely convert to string or null
+        const safeString = (val: any): string | null => {
+          if (val === null || val === undefined) return null
+          // Handle empty strings from COALESCE
+          if (val === '') return null
+          const str = String(val).trim()
+          return str === '' ? null : str
+        }
+        
+        // Handle both camelCase and lowercase column names (PostgreSQL might return lowercase)
+        const unitNumber = row.vehicle_unitNumber ?? row.vehicle_unitnumber ?? null
+        const driverName = row.vehicle_driverName ?? row.vehicle_drivername ?? null
+        const licensePlate = row.vehicle_licensePlate ?? row.vehicle_licenseplate ?? null
+        
+        const vehicleObj = row.vehicle_id ? {
           id: row.vehicle_id,
-          make: row.vehicle_make,
-          model: row.vehicle_model,
-          licensePlate: row.vehicle_licensePlate,
-          unitNumber: row.vehicle_unitNumber,
-          driverName: row.vehicle_driverName
-        } : null,
-        driver: row.driver_id ? {
-          id: row.driver_id,
-          firstName: row.driver_firstName,
-          lastName: row.driver_lastName,
-          email: row.driver_email
+          make: row.vehicle_make || '',
+          model: row.vehicle_model || '',
+          licensePlate: safeString(licensePlate),
+          unitNumber: safeString(unitNumber),
+          driverName: safeString(driverName)
         } : null
-      }))
+        
+        // Debug logging for first few orders
+        if (rawOrders.indexOf(row) < 3) {
+          console.log(`[BACKEND LIST] Order ${row.orderNumber}:`, {
+            vehicleId: row.vehicleId,
+            vehicle_id: row.vehicle_id,
+            raw_unitNumber: row.vehicle_unitNumber,
+            raw_unitNumber_type: typeof row.vehicle_unitNumber,
+            raw_driverName: row.vehicle_driverName,
+            raw_driverName_type: typeof row.vehicle_driverName,
+            processed_vehicle: vehicleObj,
+            vehicle_unitNumber_final: vehicleObj?.unitNumber,
+            vehicle_driverName_final: vehicleObj?.driverName
+          })
+        }
+        
+        return {
+          id: row.id,
+          orderNumber: row.orderNumber,
+          customerId: row.customerId,
+          vehicleId: row.vehicleId,
+          driverId: row.driverId,
+          customerLoadNumber: row.customerLoadNumber,
+          pickupAddress: row.pickupAddress,
+          deliveryAddress: row.deliveryAddress,
+          pickupDate: row.pickupDate,
+          deliveryDate: row.deliveryDate,
+          status: row.status,
+          priority: row.priority,
+          description: row.description,
+          miles: row.miles ? parseFloat(row.miles) : null,
+          pieces: row.pieces ? parseInt(row.pieces) : null,
+          weight: row.weight ? parseFloat(row.weight) : null,
+          loadPay: row.loadPay ? parseFloat(row.loadPay) : null,
+          driverPay: row.driverPay ? parseFloat(row.driverPay) : null,
+          notes: row.notes,
+          document: row.document,
+          documents: row.documents,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          customer: row.customer_id ? {
+            id: row.customer_id,
+            name: row.customer_name,
+            email: row.customer_email
+          } : null,
+          vehicle: vehicleObj,
+          driver: row.driver_id ? {
+            id: row.driver_id,
+            firstName: row.driver_firstName,
+            lastName: row.driver_lastName,
+            email: row.driver_email
+          } : null
+        }
+      })
+      
+      // Log final orders structure
+      if (orders.length > 0) {
+        console.log(`[BACKEND LIST] First order final structure:`, JSON.stringify(orders[0], null, 2))
+      }
       
       // Get total count using raw SQL with same WHERE clause
       try {
@@ -364,7 +445,9 @@ router.get('/:id', authenticate, async (req, res) => {
             model: true,
             licensePlate: true,
             color: true,
-            capacity: true
+            capacity: true,
+            unitNumber: true,
+            driverName: true
           }
         },
         driver: {
@@ -387,6 +470,15 @@ router.get('/:id', authenticate, async (req, res) => {
         message: 'Order not found'
       })
     }
+
+    // Debug logging for single order
+    console.log(`[BACKEND SINGLE] Order ${order.orderNumber}:`, {
+      vehicleId: order.vehicleId,
+      vehicle: order.vehicle,
+      vehicle_unitNumber: order.vehicle?.unitNumber,
+      vehicle_driverName: order.vehicle?.driverName,
+      full_order: JSON.stringify(order, null, 2)
+    })
 
     res.json({
       success: true,

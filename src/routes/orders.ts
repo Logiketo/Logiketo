@@ -171,8 +171,8 @@ router.get('/', authenticate, async (req, res) => {
     
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
     
-    const [ordersRaw, totalRaw] = await Promise.all([
-      prisma.$queryRawUnsafe(`
+      // Build the SQL query with explicit column selection
+      const sqlQuery = `
         SELECT 
           o.id,
           o."orderNumber",
@@ -204,8 +204,8 @@ router.get('/', authenticate, async (req, res) => {
           v.make as vehicle_make,
           v.model as vehicle_model,
           v."licensePlate" as vehicle_licensePlate,
-          v."unitNumber" as vehicle_unitNumber,
-          v."driverName" as vehicle_driverName,
+          COALESCE(v."unitNumber", '') as vehicle_unitNumber,
+          COALESCE(v."driverName", '') as vehicle_driverName,
           u.id as driver_id,
           u."firstName" as driver_firstName,
           u."lastName" as driver_lastName,
@@ -217,7 +217,12 @@ router.get('/', authenticate, async (req, res) => {
         ${whereClause}
         ORDER BY o."createdAt" DESC
         LIMIT ${limitNum} OFFSET ${skip}
-      `) as Promise<any[]>,
+      `
+      
+      console.log('[SQL QUERY] Executing:', sqlQuery.substring(0, 500) + '...')
+      
+      const [ordersRaw, totalRaw] = await Promise.all([
+      prisma.$queryRawUnsafe(sqlQuery) as Promise<any[]>,
       prisma.$queryRawUnsafe(`
         SELECT COUNT(*)::int as count 
         FROM orders o
@@ -226,10 +231,74 @@ router.get('/', authenticate, async (req, res) => {
       `) as Promise<any[]>
     ])
     
+    // Helper to safely convert to string or null
+    const safeString = (val: any): string | null => {
+      if (val === null || val === undefined) return null
+      // Handle empty strings from COALESCE
+      if (val === '') return null
+      const str = String(val).trim()
+      return str === '' ? null : str
+    }
+    
+    // Diagnostic: Check first order's vehicle data directly from database
+    if (ordersRaw.length > 0 && ordersRaw[0].vehicleId) {
+      try {
+        const testVehicle = await prisma.$queryRawUnsafe(`
+          SELECT id, "unitNumber", "driverName", "licensePlate", make, model
+          FROM vehicles
+          WHERE id = '${ordersRaw[0].vehicleId.replace(/'/g, "''")}'
+        `) as any[]
+        console.log(`[DIAGNOSTIC] Direct vehicle query for order ${ordersRaw[0].orderNumber}:`, testVehicle)
+      } catch (diagError: any) {
+        console.error('[DIAGNOSTIC] Error querying vehicle:', diagError.message)
+      }
+    }
+    
+    // Diagnostic: Log the actual structure of the first row
+    if (ordersRaw.length > 0) {
+      console.log(`[DIAGNOSTIC] First row keys:`, Object.keys(ordersRaw[0]))
+      console.log(`[DIAGNOSTIC] First row vehicle-related fields:`, {
+        vehicleId: ordersRaw[0].vehicleId,
+        vehicle_id: ordersRaw[0].vehicle_id,
+        vehicle_unitNumber: ordersRaw[0].vehicle_unitNumber,
+        'vehicle_unitnumber': ordersRaw[0].vehicle_unitnumber,
+        vehicle_driverName: ordersRaw[0].vehicle_driverName,
+        'vehicle_drivername': ordersRaw[0].vehicle_drivername,
+        vehicle_licensePlate: ordersRaw[0].vehicle_licensePlate,
+        'vehicle_licenseplate': ordersRaw[0].vehicle_licenseplate,
+        vehicle_make: ordersRaw[0].vehicle_make,
+        vehicle_model: ordersRaw[0].vehicle_model
+      })
+    }
+    
     const orders = ordersRaw.map((row: any) => {
+      // Handle both camelCase and lowercase column names (PostgreSQL might return lowercase)
+      const unitNumber = row.vehicle_unitNumber ?? row.vehicle_unitnumber ?? null
+      const driverName = row.vehicle_driverName ?? row.vehicle_drivername ?? null
+      const licensePlate = row.vehicle_licensePlate ?? row.vehicle_licenseplate ?? null
+      
+      const vehicleObj = row.vehicle_id ? {
+        id: row.vehicle_id,
+        make: row.vehicle_make || '',
+        model: row.vehicle_model || '',
+        licensePlate: safeString(licensePlate),
+        unitNumber: safeString(unitNumber),
+        driverName: safeString(driverName)
+      } : null
+      
       // Debug: Log first few orders' vehicle data
-      if (ordersRaw.indexOf(row) < 3 && row.vehicle_id) {
-        console.log(`[BACKEND] Order ${row.orderNumber} - vehicle_id: ${row.vehicle_id}, unitNumber: ${row.vehicle_unitNumber} (type: ${typeof row.vehicle_unitNumber}), driverName: ${row.vehicle_driverName}, licensePlate: ${row.vehicle_licensePlate}`)
+      if (ordersRaw.indexOf(row) < 3) {
+        console.log(`[BACKEND LIST] Order ${row.orderNumber}:`, {
+          vehicleId: row.vehicleId,
+          vehicle_id: row.vehicle_id,
+          raw_unitNumber: row.vehicle_unitNumber,
+          raw_unitNumber_type: typeof row.vehicle_unitNumber,
+          raw_driverName: row.vehicle_driverName,
+          raw_driverName_type: typeof row.vehicle_driverName,
+          processed_vehicle: vehicleObj,
+          vehicle_unitNumber_final: vehicleObj?.unitNumber,
+          vehicle_driverName_final: vehicleObj?.driverName
+        })
       }
       
       return {
@@ -261,14 +330,7 @@ router.get('/', authenticate, async (req, res) => {
           name: row.customer_name,
           email: row.customer_email
         } : null,
-        vehicle: row.vehicle_id ? {
-          id: row.vehicle_id,
-          make: row.vehicle_make,
-          model: row.vehicle_model,
-          licensePlate: row.vehicle_licensePlate,
-          unitNumber: row.vehicle_unitNumber,
-          driverName: row.vehicle_driverName
-        } : null,
+        vehicle: vehicleObj,
         driver: row.driver_id ? {
           id: row.driver_id,
           firstName: row.driver_firstName,
@@ -277,6 +339,11 @@ router.get('/', authenticate, async (req, res) => {
         } : null
       }
     })
+    
+    // Log final orders structure
+    if (orders.length > 0) {
+      console.log(`[BACKEND LIST] First order final structure:`, JSON.stringify(orders[0], null, 2))
+    }
     
     const total = totalRaw[0]?.count || 0
 
@@ -331,7 +398,9 @@ router.get('/:id', authenticate, async (req, res) => {
             model: true,
             licensePlate: true,
             color: true,
-            capacity: true
+            capacity: true,
+            unitNumber: true,
+            driverName: true
           }
         },
         driver: {
@@ -354,6 +423,15 @@ router.get('/:id', authenticate, async (req, res) => {
         message: 'Order not found'
       })
     }
+
+    // Debug logging for single order
+    console.log(`[BACKEND SINGLE] Order ${order.orderNumber}:`, {
+      vehicleId: order.vehicleId,
+      vehicle: order.vehicle,
+      vehicle_unitNumber: order.vehicle?.unitNumber,
+      vehicle_driverName: order.vehicle?.driverName,
+      full_order: JSON.stringify(order, null, 2)
+    })
 
     res.json({
       success: true,
