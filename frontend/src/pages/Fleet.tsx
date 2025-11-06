@@ -12,6 +12,7 @@ import {
   Calendar
 } from 'lucide-react'
 import { vehicleService, Vehicle, CreateVehicleData } from '@/services/vehicleService'
+import { getFileUrl } from '@/services/api'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
@@ -734,7 +735,7 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
                             </svg>
                             <div>
                               <a 
-                                href={doc.file ? '#' : `http://localhost:3001/uploads/${doc.path || doc.name}`}
+                                href={doc.file ? '#' : getFileUrl(doc.path || doc.name)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"

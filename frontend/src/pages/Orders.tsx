@@ -22,6 +22,7 @@ import { orderService, Order, OrdersResponse } from '@/services/orderService'
 import { customerService, Customer, CustomersResponse } from '@/services/customerService'
 import { vehicleService, Vehicle, VehiclesResponse } from '@/services/vehicleService'
 import { employeeService, Employee, PaginatedResponse } from '@/services/employeeService'
+import { getFileUrl } from '@/services/api'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
@@ -786,7 +787,7 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
                             <div className="flex items-center justify-end gap-2">
                               {doc.path && (
                                 <a
-                                  href={`http://localhost:3001/uploads/${doc.path}`}
+                                  href={getFileUrl(doc.path)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"

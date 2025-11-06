@@ -57,5 +57,27 @@ export const authApi = {
   },
 }
 
+// Helper function to get file URL
+export const getFileUrl = (filePath: string): string => {
+  if (!filePath) return ''
+  // If it's already a full URL, return it
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+    return filePath
+  }
+  // Get base URL without /api suffix (files are served at root level, not under /api)
+  let baseUrl = API_BASE_URL
+  // Remove trailing /api if present
+  if (baseUrl.endsWith('/api')) {
+    baseUrl = baseUrl.slice(0, -4)
+  } else if (baseUrl.endsWith('/api/')) {
+    baseUrl = baseUrl.slice(0, -5)
+  }
+  // Remove trailing slash from baseUrl
+  baseUrl = baseUrl.replace(/\/$/, '')
+  // Remove leading slash from filePath if present
+  const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath
+  return `${baseUrl}/uploads/${cleanPath}`
+}
+
 export { api }
 export default api
