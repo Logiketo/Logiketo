@@ -173,30 +173,45 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
     }
   })
 
-  // Reset form only when order.id changes (not on every render)
-  const prevOrderIdRef = useRef<string | undefined>()
+  // Reset form when order changes - watch for order object changes, not just ID
+  const prevOrderRef = useRef<Order | null>(null)
   useEffect(() => {
-    const currentOrderId = order?.id
-    // Only reset if order ID actually changed
-    if (prevOrderIdRef.current !== currentOrderId) {
-      prevOrderIdRef.current = currentOrderId
+    // Check if order actually changed (by comparing the object reference or key fields)
+    const orderChanged = 
+      !prevOrderRef.current && order ? true : // New order
+      prevOrderRef.current?.id !== order?.id || // ID changed
+      prevOrderRef.current?.customerId !== order?.customerId || // Customer changed
+      prevOrderRef.current?.vehicleId !== order?.vehicleId || // Vehicle changed
+      (prevOrderRef.current as any)?.employeeId !== (order as any)?.employeeId // Employee changed
+    
+    if (orderChanged) {
+      prevOrderRef.current = order || null
       
       if (order && order.id) {
-        reset({
-          customerId: order.customerId || '',
-          vehicleId: order.vehicleId || '',
-          driverId: order.driverId || '',
-          employeeId: (order as any).employeeId || '',
-          customerLoadNumber: (order as any).customerLoadNumber || '',
-          pickupAddress: order.pickupAddress || '',
-          deliveryAddress: order.deliveryAddress || '',
-          pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-          deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
-          miles: (order as any).miles ? (order as any).miles.toString() : '',
-          pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
-          weight: order.weight ? order.weight.toString() : '',
-          notes: order.notes || ''
+        console.log('[ORDER FORM] Resetting form with order data:', {
+          customerId: order.customerId,
+          vehicleId: order.vehicleId,
+          employeeId: (order as any).employeeId
         })
+        
+        // Use setTimeout to ensure form is ready
+        setTimeout(() => {
+          reset({
+            customerId: order.customerId || '',
+            vehicleId: order.vehicleId || '',
+            driverId: order.driverId || '',
+            employeeId: (order as any).employeeId || '',
+            customerLoadNumber: (order as any).customerLoadNumber || '',
+            pickupAddress: order.pickupAddress || '',
+            deliveryAddress: order.deliveryAddress || '',
+            pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+            deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
+            miles: (order as any).miles ? (order as any).miles.toString() : '',
+            pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
+            weight: order.weight ? order.weight.toString() : '',
+            notes: order.notes || ''
+          })
+        }, 100)
       } else {
         reset({
           customerId: '',
@@ -215,7 +230,7 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
         })
       }
     }
-  }, [order?.id, order, reset])
+  }, [order, reset])
 
   // Populate loadPay and driverPay fields (these are not in the form schema)
   useEffect(() => {
@@ -949,19 +964,26 @@ export default function Orders() {
       })
       
       // Fetch full order data to ensure we have complete vehicle information
+      // Wait for the data before opening the form
       const fullOrderData = await orderService.getOrder(order.id)
       
       console.log('[FRONTEND EDIT] Full order data received:', {
         orderId: fullOrderData.data.id,
         orderNumber: fullOrderData.data.orderNumber,
         vehicleId: fullOrderData.data.vehicleId,
+        customerId: fullOrderData.data.customerId,
+        employeeId: fullOrderData.data.employeeId,
         vehicle: fullOrderData.data.vehicle,
         vehicle_unitNumber: fullOrderData.data.vehicle?.unitNumber,
         vehicle_driverName: fullOrderData.data.vehicle?.driverName
       })
       
+      // Set the order data first, then open the form
       setSelectedOrder(fullOrderData.data)
-      setShowForm(true)
+      // Use setTimeout to ensure state is updated before form opens
+      setTimeout(() => {
+        setShowForm(true)
+      }, 0)
     } catch (error: any) {
       console.error('[FRONTEND EDIT] Failed to fetch order details:', error)
       toast.error('Failed to load order details')
