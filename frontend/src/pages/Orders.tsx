@@ -19,9 +19,9 @@ import {
   XCircle,
 } from 'lucide-react'
 import { orderService, Order, OrdersResponse } from '@/services/orderService'
-import { customerService } from '@/services/customerService'
-import { vehicleService } from '@/services/vehicleService'
-import { employeeService } from '@/services/employeeService'
+import { customerService, Customer, CustomersResponse } from '@/services/customerService'
+import { vehicleService, Vehicle, VehiclesResponse } from '@/services/vehicleService'
+import { employeeService, Employee, PaginatedResponse } from '@/services/employeeService'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
@@ -84,26 +84,26 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Fetch customers and vehicles for dropdowns
-  // Use longer staleTime and cacheTime to prevent cache expiration issues
-  const { data: customersData } = useQuery({
+  // Use longer staleTime and gcTime to prevent cache expiration issues
+  const { data: customersData } = useQuery<CustomersResponse>({
     queryKey: ['customers'],
     queryFn: () => customerService.getCustomers({ limit: 100 }),
     staleTime: 10 * 60 * 1000, // 10 minutes - data is fresh for 10 minutes
-    cacheTime: 30 * 60 * 1000 // 30 minutes - keep in cache for 30 minutes
+    gcTime: 30 * 60 * 1000 // 30 minutes - keep in cache for 30 minutes (React Query v5)
   })
 
-  const { data: vehiclesData } = useQuery({
+  const { data: vehiclesData } = useQuery<VehiclesResponse>({
     queryKey: ['vehicles'],
     queryFn: () => vehicleService.getVehicles({ limit: 100 }),
     staleTime: 10 * 60 * 1000, // 10 minutes
-    cacheTime: 30 * 60 * 1000 // 30 minutes
+    gcTime: 30 * 60 * 1000 // 30 minutes (React Query v5)
   })
 
-  const { data: employeesData } = useQuery({
+  const { data: employeesData } = useQuery<PaginatedResponse<Employee>>({
     queryKey: ['employees'],
     queryFn: () => employeeService.getEmployees({ limit: 100 }),
     staleTime: 10 * 60 * 1000, // 10 minutes
-    cacheTime: 30 * 60 * 1000 // 30 minutes
+    gcTime: 30 * 60 * 1000 // 30 minutes (React Query v5)
   })
 
   // Initialize documents when editing an order
@@ -222,9 +222,9 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
   // Set dropdown values AFTER dropdown data is loaded (fixes race condition)
   useEffect(() => {
     if (order && order.id && customersData && vehiclesData && employeesData) {
-      const customersList = customersData?.data || []
-      const vehiclesList = vehiclesData?.data || []
-      const employeesList = employeesData?.data || []
+      const customersList: Customer[] = customersData.data || []
+      const vehiclesList: Vehicle[] = vehiclesData.data || []
+      const employeesList: Employee[] = employeesData.data || []
       
       // Wait a tick to ensure DOM is ready
       const timer = setTimeout(() => {
@@ -238,13 +238,13 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
         })
         
         // Set values only if the IDs exist in the loaded data
-        if (order.customerId && customersList.some(c => c.id === order.customerId)) {
+        if (order.customerId && customersList.some((c: Customer) => c.id === order.customerId)) {
           setValue('customerId', order.customerId, { shouldValidate: false, shouldDirty: false })
         }
-        if (order.vehicleId && vehiclesList.some(v => v.id === order.vehicleId)) {
+        if (order.vehicleId && vehiclesList.some((v: Vehicle) => v.id === order.vehicleId)) {
           setValue('vehicleId', order.vehicleId, { shouldValidate: false, shouldDirty: false })
         }
-        if ((order as any).employeeId && employeesList.some(e => e.id === (order as any).employeeId)) {
+        if ((order as any).employeeId && employeesList.some((e: Employee) => e.id === (order as any).employeeId)) {
           setValue('employeeId', (order as any).employeeId, { shouldValidate: false, shouldDirty: false })
         }
       }, 0)
@@ -437,9 +437,9 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
     }
   }
 
-  const customers = customersData?.data || []
-  const vehicles = vehiclesData?.data || []
-  const employees = employeesData?.data || [] // Fixed employees reference
+  const customers: Customer[] = customersData?.data || []
+  const vehicles: Vehicle[] = vehiclesData?.data || []
+  const employees: Employee[] = employeesData?.data || []
 
   console.log('OrderForm render - isLoading:', isLoading)
   
@@ -473,14 +473,14 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
                   {...register('vehicleId')}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   onChange={(e) => {
-                    const selectedVehicle = vehicles.find(v => v.id === e.target.value)
+                    const selectedVehicle = vehicles.find((v: Vehicle) => v.id === e.target.value)
                     if (selectedVehicle) {
                       setValue('driverId', selectedVehicle.driverId || '')
                     }
                   }}
                 >
                   <option value="">Select a unit</option>
-                  {vehicles.map((vehicle) => (
+                  {vehicles.map((vehicle: Vehicle) => (
                     <option key={vehicle.id} value={vehicle.id}>
                       {vehicle.unitNumber || vehicle.licensePlate} - {vehicle.driverName || 'No Driver'}
                     </option>
@@ -500,7 +500,7 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 >
                   <option value="">Select an employee (optional)</option>
-                  {employees.map((employee) => (
+                  {employees.map((employee: Employee) => (
                     <option key={employee.id} value={employee.id}>
                       {employee.firstName} {employee.lastName}
                     </option>
@@ -520,7 +520,7 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 >
                   <option value="">Select a customer</option>
-                  {customers.map((customer) => (
+                  {customers.map((customer: Customer) => (
                     <option key={customer.id} value={customer.id}>
                       {customer.name}
                     </option>
