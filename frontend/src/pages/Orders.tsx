@@ -173,64 +173,64 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
     }
   })
 
-  // Reset form when order changes - watch for order object changes, not just ID
-  const prevOrderRef = useRef<Order | null>(null)
+  // Reset form immediately when order data is available
   useEffect(() => {
-    // Check if order actually changed (by comparing the object reference or key fields)
-    const orderChanged = 
-      !prevOrderRef.current && order ? true : // New order
-      prevOrderRef.current?.id !== order?.id || // ID changed
-      prevOrderRef.current?.customerId !== order?.customerId || // Customer changed
-      prevOrderRef.current?.vehicleId !== order?.vehicleId || // Vehicle changed
-      (prevOrderRef.current as any)?.employeeId !== (order as any)?.employeeId // Employee changed
-    
-    if (orderChanged) {
-      prevOrderRef.current = order || null
+    if (order && order.id) {
+      console.log('[ORDER FORM] Order data available, resetting form:', {
+        customerId: order.customerId,
+        vehicleId: order.vehicleId,
+        employeeId: (order as any).employeeId,
+        hasCustomer: !!order.customerId,
+        hasVehicle: !!order.vehicleId,
+        hasEmployee: !!(order as any).employeeId
+      })
       
-      if (order && order.id) {
-        console.log('[ORDER FORM] Resetting form with order data:', {
-          customerId: order.customerId,
-          vehicleId: order.vehicleId,
-          employeeId: (order as any).employeeId
-        })
-        
-        // Use setTimeout to ensure form is ready
-        setTimeout(() => {
-          reset({
-            customerId: order.customerId || '',
-            vehicleId: order.vehicleId || '',
-            driverId: order.driverId || '',
-            employeeId: (order as any).employeeId || '',
-            customerLoadNumber: (order as any).customerLoadNumber || '',
-            pickupAddress: order.pickupAddress || '',
-            deliveryAddress: order.deliveryAddress || '',
-            pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-            deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
-            miles: (order as any).miles ? (order as any).miles.toString() : '',
-            pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
-            weight: order.weight ? order.weight.toString() : '',
-            notes: order.notes || ''
-          })
-        }, 100)
-      } else {
-        reset({
-          customerId: '',
-          vehicleId: '',
-          driverId: '',
-          employeeId: '',
-          customerLoadNumber: '',
-          pickupAddress: '',
-          deliveryAddress: '',
-          pickupDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-          deliveryDate: '',
-          miles: '',
-          pieces: '',
-          weight: '',
-          notes: ''
-        })
+      // Reset form immediately with order data
+      reset({
+        customerId: order.customerId || '',
+        vehicleId: order.vehicleId || '',
+        driverId: order.driverId || '',
+        employeeId: (order as any).employeeId || '',
+        customerLoadNumber: (order as any).customerLoadNumber || '',
+        pickupAddress: order.pickupAddress || '',
+        deliveryAddress: order.deliveryAddress || '',
+        pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+        deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
+        miles: (order as any).miles ? (order as any).miles.toString() : '',
+        pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
+        weight: order.weight ? order.weight.toString() : '',
+        notes: order.notes || ''
+      }, { keepDefaultValues: false })
+      
+      // Also use setValue to ensure dropdowns are updated
+      if (order.customerId) {
+        setValue('customerId', order.customerId, { shouldValidate: false })
       }
+      if (order.vehicleId) {
+        setValue('vehicleId', order.vehicleId, { shouldValidate: false })
+      }
+      if ((order as any).employeeId) {
+        setValue('employeeId', (order as any).employeeId, { shouldValidate: false })
+      }
+    } else if (!order) {
+      // Reset to empty form for new order
+      reset({
+        customerId: '',
+        vehicleId: '',
+        driverId: '',
+        employeeId: '',
+        customerLoadNumber: '',
+        pickupAddress: '',
+        deliveryAddress: '',
+        pickupDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+        deliveryDate: '',
+        miles: '',
+        pieces: '',
+        weight: '',
+        notes: ''
+      })
     }
-  }, [order, reset])
+  }, [order?.id, order?.customerId, order?.vehicleId, (order as any)?.employeeId, reset, setValue])
 
   // Populate loadPay and driverPay fields (these are not in the form schema)
   useEffect(() => {
@@ -978,12 +978,11 @@ export default function Orders() {
         vehicle_driverName: fullOrderData.data.vehicle?.driverName
       })
       
-      // Set the order data first, then open the form
+      // Set the order data first, then open form after state update
       setSelectedOrder(fullOrderData.data)
-      // Use setTimeout to ensure state is updated before form opens
-      setTimeout(() => {
-        setShowForm(true)
-      }, 0)
+      // Wait for next tick to ensure state is updated
+      await new Promise(resolve => setTimeout(resolve, 0))
+      setShowForm(true)
     } catch (error: any) {
       console.error('[FRONTEND EDIT] Failed to fetch order details:', error)
       toast.error('Failed to load order details')
@@ -1438,7 +1437,7 @@ export default function Orders() {
       {/* Order Form Modal */}
       {showForm && (
         <OrderForm
-          key={selectedOrder?.id || 'new'}
+          key={`${selectedOrder?.id || 'new'}-${selectedOrder?.customerId || ''}-${selectedOrder?.vehicleId || ''}-${(selectedOrder as any)?.employeeId || ''}`}
           order={selectedOrder || undefined}
           onClose={handleFormClose}
           onSuccess={handleFormClose}
