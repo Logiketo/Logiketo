@@ -84,19 +84,26 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Fetch customers and vehicles for dropdowns
+  // Use longer staleTime and cacheTime to prevent cache expiration issues
   const { data: customersData } = useQuery({
     queryKey: ['customers'],
-    queryFn: () => customerService.getCustomers({ limit: 100 })
+    queryFn: () => customerService.getCustomers({ limit: 100 }),
+    staleTime: 10 * 60 * 1000, // 10 minutes - data is fresh for 10 minutes
+    cacheTime: 30 * 60 * 1000 // 30 minutes - keep in cache for 30 minutes
   })
 
   const { data: vehiclesData } = useQuery({
     queryKey: ['vehicles'],
-    queryFn: () => vehicleService.getVehicles({ limit: 100 })
+    queryFn: () => vehicleService.getVehicles({ limit: 100 }),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 30 * 60 * 1000 // 30 minutes
   })
 
   const { data: employeesData } = useQuery({
     queryKey: ['employees'],
-    queryFn: () => employeeService.getEmployees({ limit: 100 })
+    queryFn: () => employeeService.getEmployees({ limit: 100 }),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 30 * 60 * 1000 // 30 minutes
   })
 
   // Initialize documents when editing an order
@@ -192,17 +199,6 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
       
       // Reset form with order data - use the memoized defaultValues
       reset(defaultValues, { keepDefaultValues: false })
-      
-      // Also use setValue to ensure dropdowns are updated immediately
-      if (order.customerId) {
-        setValue('customerId', order.customerId, { shouldValidate: false, shouldDirty: false })
-      }
-      if (order.vehicleId) {
-        setValue('vehicleId', order.vehicleId, { shouldValidate: false, shouldDirty: false })
-      }
-      if ((order as any).employeeId) {
-        setValue('employeeId', (order as any).employeeId, { shouldValidate: false, shouldDirty: false })
-      }
     } else if (!order) {
       // Reset to empty form for new order
       reset({
@@ -221,7 +217,41 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
         notes: ''
       })
     }
-  }, [order?.id, order?.customerId, order?.vehicleId, (order as any)?.employeeId, defaultValues, reset, setValue])
+  }, [order?.id, order?.customerId, order?.vehicleId, (order as any)?.employeeId, defaultValues, reset])
+
+  // Set dropdown values AFTER dropdown data is loaded (fixes race condition)
+  useEffect(() => {
+    if (order && order.id && customersData && vehiclesData && employeesData) {
+      const customersList = customersData?.data || []
+      const vehiclesList = vehiclesData?.data || []
+      const employeesList = employeesData?.data || []
+      
+      // Wait a tick to ensure DOM is ready
+      const timer = setTimeout(() => {
+        console.log('[ORDER FORM] Setting dropdown values after data loaded:', {
+          customerId: order.customerId,
+          vehicleId: order.vehicleId,
+          employeeId: (order as any).employeeId,
+          customersLoaded: customersList.length > 0,
+          vehiclesLoaded: vehiclesList.length > 0,
+          employeesLoaded: employeesList.length > 0
+        })
+        
+        // Set values only if the IDs exist in the loaded data
+        if (order.customerId && customersList.some(c => c.id === order.customerId)) {
+          setValue('customerId', order.customerId, { shouldValidate: false, shouldDirty: false })
+        }
+        if (order.vehicleId && vehiclesList.some(v => v.id === order.vehicleId)) {
+          setValue('vehicleId', order.vehicleId, { shouldValidate: false, shouldDirty: false })
+        }
+        if ((order as any).employeeId && employeesList.some(e => e.id === (order as any).employeeId)) {
+          setValue('employeeId', (order as any).employeeId, { shouldValidate: false, shouldDirty: false })
+        }
+      }, 0)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [order?.id, order?.customerId, order?.vehicleId, (order as any)?.employeeId, customersData, vehiclesData, employeesData, setValue])
 
   // Populate loadPay and driverPay fields (these are not in the form schema)
   useEffect(() => {
