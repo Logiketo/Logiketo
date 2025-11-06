@@ -77,18 +77,49 @@ app.get('/uploads/:filename', (req, res) => {
     }
     
     const filePath = path.join(uploadDir, filename)
+    const resolvedPath = path.resolve(filePath)
+    
+    console.log(`[FILE SERVE] Attempting to serve file: ${filename}`)
+    console.log(`[FILE SERVE] Upload directory: ${uploadDir}`)
+    console.log(`[FILE SERVE] File path: ${filePath}`)
+    console.log(`[FILE SERVE] Resolved path: ${resolvedPath}`)
+    
+    // Check if upload directory exists
+    if (!fs.existsSync(uploadDir)) {
+      console.error(`[FILE SERVE] Upload directory does not exist: ${uploadDir}`)
+      return res.status(404).json({ 
+        success: false, 
+        error: `Not Found - /uploads/${filename}`,
+        message: 'Upload directory does not exist. Files may have been lost due to container restart (ephemeral storage).'
+      })
+    }
+    
+    // List files in upload directory for debugging
+    try {
+      const filesInDir = fs.readdirSync(uploadDir)
+      console.log(`[FILE SERVE] Files in upload directory (${filesInDir.length}):`, filesInDir.slice(0, 10))
+    } catch (listError) {
+      console.error(`[FILE SERVE] Could not list files in directory:`, listError)
+    }
     
     // Check if file exists
     if (!fs.existsSync(filePath)) {
-      console.error(`File not found: ${filePath}`)
-      return res.status(404).json({ success: false, error: `Not Found - /uploads/${filename}` })
+      console.error(`[FILE SERVE] File not found: ${filePath}`)
+      return res.status(404).json({ 
+        success: false, 
+        error: `Not Found - /uploads/${filename}`,
+        message: 'File not found. This may be due to Railway ephemeral storage - files are lost when the container restarts.',
+        uploadDir: uploadDir,
+        filename: filename
+      })
     }
     
+    console.log(`[FILE SERVE] File found, sending: ${resolvedPath}`)
     // Send file with appropriate headers
-    res.sendFile(path.resolve(filePath))
+    res.sendFile(resolvedPath)
   } catch (error: any) {
-    console.error('Error serving file:', error)
-    res.status(500).json({ success: false, error: 'Internal server error' })
+    console.error('[FILE SERVE] Error serving file:', error)
+    res.status(500).json({ success: false, error: 'Internal server error', details: error.message })
   }
 })
 
