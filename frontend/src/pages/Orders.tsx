@@ -163,10 +163,7 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
       miles: '',
       pieces: '',
       weight: '',
-      value: '',
-      notes: '',
-      document: undefined,
-      priority: 'NORMAL'
+      notes: ''
     }
   }, [order?.id, order?.customerId, order?.vehicleId, (order as any)?.employeeId])
 
