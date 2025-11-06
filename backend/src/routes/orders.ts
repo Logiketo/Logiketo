@@ -1,6 +1,8 @@
 import express from 'express'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
+import path from 'path'
+import fs from 'fs'
 import { authenticate, AuthRequest } from '../middleware/auth'
 import { uploadOrderDocuments } from '../middleware/upload'
 
@@ -528,6 +530,14 @@ router.post('/', authenticate, uploadOrderDocuments, async (req: AuthRequest, re
       const docName = req.body[`document_name_${i}`]
       const docNotes = req.body[`document_notes_${i}`]
       if (docFile && docName) {
+        const filePath = path.join(process.env.UPLOAD_PATH || './uploads', docFile.filename)
+        const fileExists = fs.existsSync(filePath)
+        console.log(`[ORDER UPLOAD] Document ${i}: ${docName}`)
+        console.log(`[ORDER UPLOAD] Filename: ${docFile.filename}`)
+        console.log(`[ORDER UPLOAD] File path: ${filePath}`)
+        console.log(`[ORDER UPLOAD] File exists: ${fileExists}`)
+        console.log(`[ORDER UPLOAD] File size: ${docFile.size} bytes`)
+        
         documents.push({
           name: docName,
           path: docFile.filename,

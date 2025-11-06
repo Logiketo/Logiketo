@@ -11,13 +11,21 @@ if (!fs.existsSync(uploadDir)) {
 // Configure multer storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
+    console.log(`[UPLOAD] Destination directory: ${uploadDir}`)
+    // Ensure directory exists
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true })
+      console.log(`[UPLOAD] Created upload directory: ${uploadDir}`)
+    }
     cb(null, uploadDir)
   },
   filename: (req, file, cb) => {
     // Generate unique filename with timestamp
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
     const ext = path.extname(file.originalname)
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`)
+    const filename = `${file.fieldname}-${uniqueSuffix}${ext}`
+    console.log(`[UPLOAD] Generated filename: ${filename} for file: ${file.originalname}`)
+    cb(null, filename)
   }
 })
 
