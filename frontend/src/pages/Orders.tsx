@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
@@ -131,29 +131,26 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
     }
   }, [order])
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-    reset
-  } = useForm({
-    resolver: zodResolver(orderSchema),
-    defaultValues: order ? {
-      customerId: order.customerId,
-      vehicleId: order.vehicleId || '',
-      driverId: order.driverId || '',
-      employeeId: (order as any).employeeId || '',
-      customerLoadNumber: (order as any).customerLoadNumber || '',
-      pickupAddress: order.pickupAddress,
-      deliveryAddress: order.deliveryAddress,
-      pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : '',
-      deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
-      miles: (order as any).miles ? (order as any).miles.toString() : '',
-      pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
-      weight: order.weight ? order.weight.toString() : '',
-      notes: order.notes || ''
-    } : {
+  // Memoize default values to ensure they're set correctly when order changes
+  const defaultValues = useMemo(() => {
+    if (order && order.id) {
+      return {
+        customerId: order.customerId || '',
+        vehicleId: order.vehicleId || '',
+        driverId: order.driverId || '',
+        employeeId: (order as any).employeeId || '',
+        customerLoadNumber: (order as any).customerLoadNumber || '',
+        pickupAddress: order.pickupAddress || '',
+        deliveryAddress: order.deliveryAddress || '',
+        pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+        deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
+        miles: (order as any).miles ? (order as any).miles.toString() : '',
+        pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
+        weight: order.weight ? order.weight.toString() : '',
+        notes: order.notes || ''
+      }
+    }
+    return {
       customerId: '',
       vehicleId: '',
       driverId: '',
@@ -171,9 +168,20 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
       document: undefined,
       priority: 'NORMAL'
     }
+  }, [order?.id, order?.customerId, order?.vehicleId, (order as any)?.employeeId])
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    reset
+  } = useForm({
+    resolver: zodResolver(orderSchema),
+    defaultValues
   })
 
-  // Reset form immediately when order data is available
+  // Reset form when order data changes
   useEffect(() => {
     if (order && order.id) {
       console.log('[ORDER FORM] Order data available, resetting form:', {
@@ -185,32 +193,18 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
         hasEmployee: !!(order as any).employeeId
       })
       
-      // Reset form immediately with order data
-      reset({
-        customerId: order.customerId || '',
-        vehicleId: order.vehicleId || '',
-        driverId: order.driverId || '',
-        employeeId: (order as any).employeeId || '',
-        customerLoadNumber: (order as any).customerLoadNumber || '',
-        pickupAddress: order.pickupAddress || '',
-        deliveryAddress: order.deliveryAddress || '',
-        pickupDate: order.pickupDate ? format(new Date(order.pickupDate), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-        deliveryDate: order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd'T'HH:mm") : '',
-        miles: (order as any).miles ? (order as any).miles.toString() : '',
-        pieces: (order as any).pieces ? (order as any).pieces.toString() : '',
-        weight: order.weight ? order.weight.toString() : '',
-        notes: order.notes || ''
-      }, { keepDefaultValues: false })
+      // Reset form with order data - use the memoized defaultValues
+      reset(defaultValues, { keepDefaultValues: false })
       
-      // Also use setValue to ensure dropdowns are updated
+      // Also use setValue to ensure dropdowns are updated immediately
       if (order.customerId) {
-        setValue('customerId', order.customerId, { shouldValidate: false })
+        setValue('customerId', order.customerId, { shouldValidate: false, shouldDirty: false })
       }
       if (order.vehicleId) {
-        setValue('vehicleId', order.vehicleId, { shouldValidate: false })
+        setValue('vehicleId', order.vehicleId, { shouldValidate: false, shouldDirty: false })
       }
       if ((order as any).employeeId) {
-        setValue('employeeId', (order as any).employeeId, { shouldValidate: false })
+        setValue('employeeId', (order as any).employeeId, { shouldValidate: false, shouldDirty: false })
       }
     } else if (!order) {
       // Reset to empty form for new order
@@ -230,7 +224,7 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
         notes: ''
       })
     }
-  }, [order?.id, order?.customerId, order?.vehicleId, (order as any)?.employeeId, reset, setValue])
+  }, [order?.id, order?.customerId, order?.vehicleId, (order as any)?.employeeId, defaultValues, reset, setValue])
 
   // Populate loadPay and driverPay fields (these are not in the form schema)
   useEffect(() => {
@@ -841,6 +835,7 @@ export default function Orders() {
   const [priorityFilter] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [isLoadingOrder, setIsLoadingOrder] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const queryClient = useQueryClient()
   const location = useLocation()
@@ -956,6 +951,7 @@ export default function Orders() {
 
   const handleEdit = async (order: Order) => {
     try {
+      setIsLoadingOrder(true)
       console.log('[FRONTEND EDIT] Opening order for edit:', {
         orderId: order.id,
         orderNumber: order.orderNumber,
@@ -964,7 +960,6 @@ export default function Orders() {
       })
       
       // Fetch full order data to ensure we have complete vehicle information
-      // Wait for the data before opening the form
       const fullOrderData = await orderService.getOrder(order.id)
       
       console.log('[FRONTEND EDIT] Full order data received:', {
@@ -978,14 +973,17 @@ export default function Orders() {
         vehicle_driverName: fullOrderData.data.vehicle?.driverName
       })
       
-      // Set the order data first, then open form after state update
+      // Set the order data first
       setSelectedOrder(fullOrderData.data)
-      // Wait for next tick to ensure state is updated
-      await new Promise(resolve => setTimeout(resolve, 0))
+      // Wait for React to process the state update
+      await new Promise(resolve => setTimeout(resolve, 50))
+      // Now open the form - it will have the complete order data
       setShowForm(true)
+      setIsLoadingOrder(false)
     } catch (error: any) {
       console.error('[FRONTEND EDIT] Failed to fetch order details:', error)
       toast.error('Failed to load order details')
+      setIsLoadingOrder(false)
       // Fallback to using the order from list
       setSelectedOrder(order)
       setShowForm(true)
@@ -1000,6 +998,7 @@ export default function Orders() {
   const handleFormClose = () => {
     setShowForm(false)
     setSelectedOrder(null)
+    setIsLoadingOrder(false)
   }
 
   const handleStatusChange = async (order: Order, newStatus: string) => {
@@ -1435,13 +1434,29 @@ export default function Orders() {
       </div>
 
       {/* Order Form Modal */}
-      {showForm && (
+      {showForm && !isLoadingOrder && selectedOrder && (
         <OrderForm
-          key={`${selectedOrder?.id || 'new'}-${selectedOrder?.customerId || ''}-${selectedOrder?.vehicleId || ''}-${(selectedOrder as any)?.employeeId || ''}`}
-          order={selectedOrder || undefined}
+          key={`${selectedOrder.id}-${selectedOrder.customerId || ''}-${selectedOrder.vehicleId || ''}-${(selectedOrder as any)?.employeeId || ''}`}
+          order={selectedOrder}
           onClose={handleFormClose}
           onSuccess={handleFormClose}
         />
+      )}
+      {showForm && !isLoadingOrder && !selectedOrder && (
+        <OrderForm
+          key="new"
+          order={undefined}
+          onClose={handleFormClose}
+          onSuccess={handleFormClose}
+        />
+      )}
+      {isLoadingOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-700 dark:text-gray-300">Loading order details...</p>
+          </div>
+        </div>
       )}
     </div>
   )
