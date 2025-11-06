@@ -7,6 +7,8 @@ import rateLimit from 'express-rate-limit'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 import dotenv from 'dotenv'
+import path from 'path'
+import fs from 'fs'
 
 import { errorHandler } from './middleware/errorHandler'
 import { notFound } from './middleware/notFound'
@@ -57,8 +59,41 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-// Serve uploaded files
-app.use('/uploads', express.static(process.env.UPLOAD_PATH || './uploads'))
+// Serve uploaded files - use dedicated route for better error handling
+const uploadDir = process.env.UPLOAD_PATH || './uploads'
+
+// Ensure uploads directory exists
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true })
+}
+
+// Dedicated route for serving files with proper error handling
+app.get('/uploads/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename
+    // Security: prevent directory traversal
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(400).json({ success: false, error: 'Invalid filename' })
+    }
+    
+    const filePath = path.join(uploadDir, filename)
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      console.error(`File not found: ${filePath}`)
+      return res.status(404).json({ success: false, error: `Not Found - /uploads/${filename}` })
+    }
+    
+    // Send file with appropriate headers
+    res.sendFile(path.resolve(filePath))
+  } catch (error: any) {
+    console.error('Error serving file:', error)
+    res.status(500).json({ success: false, error: 'Internal server error' })
+  }
+})
+
+// Also keep static route as fallback
+app.use('/uploads', express.static(uploadDir))
 
 // Health check
 app.get('/health', (req, res) => {
