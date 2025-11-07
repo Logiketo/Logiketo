@@ -887,10 +887,10 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
       })
     }
 
-    // Update order status - handle IN_TRANSIT enum issue
+    // Update order status - IN_TRANSIT requires special handling (enum missing in DB)
     let order
     if (status === 'IN_TRANSIT') {
-      // Add IN_TRANSIT to enum if missing (one-time fix)
+      // Add IN_TRANSIT to enum if missing
       try {
         await prisma.$executeRawUnsafe(`
           DO $$ 
@@ -913,7 +913,7 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
         WHERE id = '${id.replace(/'/g, "''")}'
       `)
       
-      // Fetch with Prisma
+      // Fetch updated order
       order = await prisma.order.findUnique({
         where: { id },
         include: {
