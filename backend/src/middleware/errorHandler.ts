@@ -14,8 +14,11 @@ export const errorHandler = (
   let error = { ...err }
   error.message = err.message
 
-  // Log error
-  console.error(err)
+  // Don't log 404 errors (they're normal)
+  const statusCode = error.statusCode || 500
+  if (statusCode !== 404) {
+    console.error(err)
+  }
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
@@ -35,7 +38,7 @@ export const errorHandler = (
     error = { message, statusCode: 400 } as AppError
   }
 
-  res.status(error.statusCode || 500).json({
+  res.status(statusCode).json({
     success: false,
     error: error.message || 'Server Error',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
