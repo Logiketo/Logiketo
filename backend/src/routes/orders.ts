@@ -935,15 +935,28 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
       })
     }
 
-    // Create tracking event
-    await prisma.trackingEvent.create({
-      data: {
-        orderId: id,
-        status,
-        location,
-        notes: notes || `Status changed to ${status}`
+    // Create tracking event - use raw SQL for IN_TRANSIT to avoid enum issues
+    if (status === 'IN_TRANSIT') {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO tracking_events ("id", "orderId", "status", "location", "notes", "timestamp")
+          VALUES (gen_random_uuid()::text, '${id.replace(/'/g, "''")}', 'IN_TRANSIT'::"OrderStatus", 
+                  ${location ? `'${location.replace(/'/g, "''")}'` : 'NULL'}, 
+                  '${(notes || `Status changed to IN_TRANSIT`).replace(/'/g, "''")}', NOW())
+        `)
+      } catch (e) {
+        console.warn('Failed to create tracking event:', e)
       }
-    })
+    } else {
+      await prisma.trackingEvent.create({
+        data: {
+          orderId: id,
+          status,
+          location,
+          notes: notes || `Status changed to ${status}`
+        }
+      })
+    }
 
     res.json({
       success: true,
