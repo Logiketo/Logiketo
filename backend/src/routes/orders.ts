@@ -887,10 +887,10 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
       })
     }
 
-    // Update order status - use raw SQL for IN_TRANSIT (enum missing), Prisma for others
+    // Update order status - use raw SQL for IN_TRANSIT (enum missing in DB), Prisma for others
     let order
     if (status === 'IN_TRANSIT') {
-      // Add enum value if missing, then update with raw SQL
+      // Add enum value if missing, then update with raw SQL (like dispatch route)
       try {
         await prisma.$executeRawUnsafe(`
           DO $$ 
@@ -907,7 +907,8 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
       } catch (e) {}
       
       await prisma.$executeRawUnsafe(`
-        UPDATE orders SET status = 'IN_TRANSIT'::"OrderStatus", "updatedAt" = NOW()
+        UPDATE orders 
+        SET status = 'IN_TRANSIT'::"OrderStatus", "updatedAt" = NOW()
         WHERE id = '${id.replace(/'/g, "''")}'
       `)
       
