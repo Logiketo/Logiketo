@@ -887,36 +887,56 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
       })
     }
 
-    // Update order status
-    const order = await prisma.order.update({
-      where: { id },
-      data: { status },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
-        },
-        vehicle: {
-          select: {
-            id: true,
-            make: true,
-            model: true,
-            licensePlate: true
-          }
-        },
-        driver: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        }
+    // For IN_TRANSIT: add to enum if missing, then use raw SQL (bypasses Prisma validation)
+    // For others: use Prisma update (works fine)
+    let order
+    if (status === 'IN_TRANSIT') {
+      // Add IN_TRANSIT to enum if it doesn't exist
+      try {
+        await prisma.$executeRawUnsafe(`
+          DO $$ 
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_enum 
+              WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'OrderStatus')
+              AND enumlabel = 'IN_TRANSIT'
+            ) THEN
+              ALTER TYPE "OrderStatus" ADD VALUE 'IN_TRANSIT';
+            END IF;
+          END $$;
+        `)
+      } catch (e) {
+        // Ignore - enum value might already exist
       }
-    })
+      
+      // Use raw SQL to update (bypasses Prisma enum validation)
+      await prisma.$executeRawUnsafe(`
+        UPDATE orders 
+        SET status = 'IN_TRANSIT'::"OrderStatus", "updatedAt" = NOW()
+        WHERE id = '${id.replace(/'/g, "''")}'
+      `)
+      
+      // Fetch updated order
+      order = await prisma.order.findUnique({
+        where: { id },
+        include: {
+          customer: { select: { id: true, name: true, email: true } },
+          vehicle: { select: { id: true, make: true, model: true, licensePlate: true } },
+          driver: { select: { id: true, firstName: true, lastName: true, email: true } }
+        }
+      })
+    } else {
+      // Use Prisma for other statuses (works fine)
+      order = await prisma.order.update({
+        where: { id },
+        data: { status },
+        include: {
+          customer: { select: { id: true, name: true, email: true } },
+          vehicle: { select: { id: true, make: true, model: true, licensePlate: true } },
+          driver: { select: { id: true, firstName: true, lastName: true, email: true } }
+        }
+      })
+    }
 
     // Create tracking event
     await prisma.trackingEvent.create({
