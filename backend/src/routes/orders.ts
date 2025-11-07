@@ -887,46 +887,101 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
       })
     }
 
-    // Update order status
-    const order = await prisma.order.update({
-      where: { id },
-      data: { status },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
-        },
-        vehicle: {
-          select: {
-            id: true,
-            make: true,
-            model: true,
-            licensePlate: true
-          }
-        },
-        driver: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
+    // Update order status - try Prisma first, fallback to raw SQL if enum issues occur
+    let order
+    try {
+      order = await prisma.order.update({
+        where: { id },
+        data: { status },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            }
+          },
+          vehicle: {
+            select: {
+              id: true,
+              make: true,
+              model: true,
+              licensePlate: true
+            }
+          },
+          driver: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
           }
         }
-      }
-    })
+      })
+    } catch (prismaError: any) {
+      // If Prisma fails (possibly due to enum issues), use raw SQL as fallback
+      console.warn('Prisma update failed, using raw SQL fallback:', prismaError?.message)
+      await prisma.$executeRawUnsafe(`
+        UPDATE orders 
+        SET status = '${status.replace(/'/g, "''")}'::"OrderStatus",
+            "updatedAt" = NOW()
+        WHERE id = '${id.replace(/'/g, "''")}'
+      `)
+      
+      // Fetch updated order with relations
+      order = await prisma.order.findUnique({
+        where: { id },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            }
+          },
+          vehicle: {
+            select: {
+              id: true,
+              make: true,
+              model: true,
+              licensePlate: true
+            }
+          },
+          driver: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          }
+        }
+      })
+    }
 
-    // Create tracking event
-    await prisma.trackingEvent.create({
-      data: {
-        orderId: id,
-        status,
-        location,
-        notes: notes || `Status changed to ${status}`
-      }
-    })
+    // Ensure order was successfully retrieved
+    if (!order) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve updated order'
+      })
+    }
+
+    // Create tracking event - wrap in try-catch to prevent failure if this step errors
+    try {
+      await prisma.trackingEvent.create({
+        data: {
+          orderId: id,
+          status,
+          location,
+          notes: notes || `Status changed to ${status}`
+        }
+      })
+    } catch (trackingError: any) {
+      console.error('Failed to create tracking event (non-critical):', trackingError?.message)
+      // Don't fail the request if tracking event creation fails
+    }
 
     res.json({
       success: true,
@@ -934,11 +989,22 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
       message: 'Order status updated successfully'
     })
     return
-  } catch (error) {
+  } catch (error: any) {
     console.error('Update order status error:', error)
+    console.error('Error details:', {
+      message: error?.message,
+      code: error?.code,
+      meta: error?.meta,
+      stack: error?.stack
+    })
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: error?.message || 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? {
+        message: error?.message,
+        code: error?.code,
+        meta: error?.meta
+      } : undefined
     })
     return
   }

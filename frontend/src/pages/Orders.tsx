@@ -1380,8 +1380,11 @@ export default function Orders() {
                               value={order.status}
                                       onChange={(e) => {
                                         handleStatusChange(order, e.target.value)
-                                        const dropdown = e.currentTarget.closest('.hidden') as HTMLElement
-                                        dropdown.classList.add('hidden')
+                                        // Find the dropdown container by traversing up to the absolute positioned div
+                                        const dropdown = e.currentTarget.closest('div.absolute') as HTMLElement
+                                        if (dropdown) {
+                                          dropdown.classList.add('hidden')
+                                        }
                                       }}
                                       className="w-full mt-1 text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                               disabled={statusMutation.isPending}
