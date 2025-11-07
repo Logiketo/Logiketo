@@ -887,78 +887,115 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
       })
     }
 
-    // Update order status - try Prisma first, fallback to raw SQL if enum issues occur
-    let order
+    // Update order status - use raw SQL to avoid enum validation issues
+    // First, ensure the enum value exists (add it if missing) - must be in separate transaction
     try {
-      order = await prisma.order.update({
-        where: { id },
-        data: { status },
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            }
-          },
-          vehicle: {
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              licensePlate: true
-            }
-          },
-          driver: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true
-            }
-          }
-        }
-      })
-    } catch (prismaError: any) {
-      // If Prisma fails (possibly due to enum issues), use raw SQL as fallback
-      console.warn('Prisma update failed, using raw SQL fallback:', prismaError?.message)
+      // Check if enum value exists
+      const enumCheck = await prisma.$queryRawUnsafe(`
+        SELECT enumlabel 
+        FROM pg_enum 
+        WHERE enumtypid = (
+          SELECT oid 
+          FROM pg_type 
+          WHERE typname = 'OrderStatus'
+        ) 
+        AND enumlabel = '${status.replace(/'/g, "''")}'
+      `) as any[]
+
+      // If enum value doesn't exist, add it (in a separate transaction)
+      if (!enumCheck || enumCheck.length === 0) {
+        console.log(`Adding missing enum value: ${status}`)
+        // Use a DO block to add enum value safely
+        await prisma.$executeRawUnsafe(`
+          DO $$ 
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_enum 
+              WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'OrderStatus')
+              AND enumlabel = '${status.replace(/'/g, "''")}'
+            ) THEN
+              ALTER TYPE "OrderStatus" ADD VALUE '${status.replace(/'/g, "''")}';
+            END IF;
+          END $$;
+        `)
+      }
+    } catch (enumError: any) {
+      // If adding enum value fails, log but continue - might already exist
+      console.warn('Enum check/add warning:', enumError?.message)
+      // If the error is about enum not existing, we'll handle it in the update
+    }
+
+    // Update order status using raw SQL (bypasses Prisma enum validation)
+    // Use text casting as fallback if enum value doesn't exist yet
+    try {
       await prisma.$executeRawUnsafe(`
         UPDATE orders 
         SET status = '${status.replace(/'/g, "''")}'::"OrderStatus",
             "updatedAt" = NOW()
         WHERE id = '${id.replace(/'/g, "''")}'
       `)
-      
-      // Fetch updated order with relations
-      order = await prisma.order.findUnique({
-        where: { id },
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            }
-          },
-          vehicle: {
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              licensePlate: true
-            }
-          },
-          driver: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true
-            }
+    } catch (updateError: any) {
+      // If enum casting fails, try updating as text first, then convert
+      if (updateError?.message?.includes('invalid input value for enum')) {
+        console.warn('Enum value missing, attempting workaround:', updateError?.message)
+        // Try to add the enum value and retry
+        try {
+          await prisma.$executeRawUnsafe(`
+            DO $$ 
+            BEGIN
+              IF NOT EXISTS (
+                SELECT 1 FROM pg_enum 
+                WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'OrderStatus')
+                AND enumlabel = '${status.replace(/'/g, "''")}'
+              ) THEN
+                ALTER TYPE "OrderStatus" ADD VALUE '${status.replace(/'/g, "''")}';
+              END IF;
+            END $$;
+          `)
+          // Retry the update
+          await prisma.$executeRawUnsafe(`
+            UPDATE orders 
+            SET status = '${status.replace(/'/g, "''")}'::"OrderStatus",
+                "updatedAt" = NOW()
+            WHERE id = '${id.replace(/'/g, "''")}'
+          `)
+        } catch (retryError: any) {
+          throw new Error(`Failed to update order status: ${retryError?.message || updateError?.message}`)
+        }
+      } else {
+        throw updateError
+      }
+    }
+    
+    // Fetch updated order with relations
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          }
+        },
+        vehicle: {
+          select: {
+            id: true,
+            make: true,
+            model: true,
+            licensePlate: true
+          }
+        },
+        driver: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true
           }
         }
-      })
-    }
+      }
+    })
 
     // Ensure order was successfully retrieved
     if (!order) {
