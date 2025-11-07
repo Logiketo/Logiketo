@@ -887,28 +887,7 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
       })
     }
 
-    // Add IN_TRANSIT to enum if it doesn't exist (one-time fix for missing enum value)
-    if (status === 'IN_TRANSIT') {
-      try {
-        await prisma.$executeRawUnsafe(`
-          DO $$ 
-          BEGIN
-            IF NOT EXISTS (
-              SELECT 1 FROM pg_enum 
-              WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'OrderStatus')
-              AND enumlabel = 'IN_TRANSIT'
-            ) THEN
-              ALTER TYPE "OrderStatus" ADD VALUE 'IN_TRANSIT';
-            END IF;
-          END $$;
-        `)
-      } catch (enumError: any) {
-        // Ignore if already exists or other non-critical errors
-        console.warn('Enum check warning (non-critical):', enumError?.message)
-      }
-    }
-
-    // Update order status - same as other statuses that work
+    // Update order status
     const order = await prisma.order.update({
       where: { id },
       data: { status },
@@ -939,28 +918,15 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
       }
     })
 
-    // Ensure order was successfully retrieved
-    if (!order) {
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to retrieve updated order'
-      })
-    }
-
-    // Create tracking event - wrap in try-catch to prevent failure if this step errors
-    try {
-      await prisma.trackingEvent.create({
-        data: {
-          orderId: id,
-          status,
-          location,
-          notes: notes || `Status changed to ${status}`
-        }
-      })
-    } catch (trackingError: any) {
-      console.error('Failed to create tracking event (non-critical):', trackingError?.message)
-      // Don't fail the request if tracking event creation fails
-    }
+    // Create tracking event
+    await prisma.trackingEvent.create({
+      data: {
+        orderId: id,
+        status,
+        location,
+        notes: notes || `Status changed to ${status}`
+      }
+    })
 
     res.json({
       success: true,
@@ -968,22 +934,11 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
       message: 'Order status updated successfully'
     })
     return
-  } catch (error: any) {
+  } catch (error) {
     console.error('Update order status error:', error)
-    console.error('Error details:', {
-      message: error?.message,
-      code: error?.code,
-      meta: error?.meta,
-      stack: error?.stack
-    })
     res.status(500).json({
       success: false,
-      message: error?.message || 'Internal server error',
-      error: process.env.NODE_ENV === 'development' ? {
-        message: error?.message,
-        code: error?.code,
-        meta: error?.meta
-      } : undefined
+      message: 'Internal server error'
     })
     return
   }
