@@ -38,9 +38,18 @@ export const errorHandler = (
     error = { message, statusCode: 400 } as AppError
   }
 
-  res.status(statusCode).json({
+  // Security: Never expose stack traces or detailed errors in production
+  const response: any = {
     success: false,
-    error: error.message || 'Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  })
+    message: process.env.NODE_ENV === 'production' 
+      ? 'An error occurred. Please try again later.' 
+      : (error.message || 'Server Error')
+  }
+  
+  // Only include stack trace in development
+  if (process.env.NODE_ENV === 'development' && err.stack) {
+    response.stack = err.stack
+  }
+  
+  res.status(statusCode).json(response)
 }

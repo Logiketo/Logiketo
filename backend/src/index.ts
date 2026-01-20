@@ -65,10 +65,25 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.'
 })
 
-// Middleware
-app.use(helmet())
+// Middleware - Enhanced security
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}))
 app.use(compression())
-app.use(morgan('combined'))
+// Only log in development to prevent information leakage
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'))
 app.use(limiter)
 
 // CORS configuration with debugging
@@ -84,7 +99,10 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 }
 
-console.log('🔧 CORS Configuration:', corsOptions)
+// Security: Don't log CORS config in production
+if (process.env.NODE_ENV !== 'production') {
+  console.log('🔧 CORS Configuration:', corsOptions)
+}
 
 app.use(cors(corsOptions))
 app.use(express.json({ limit: '10mb' }))
@@ -102,58 +120,8 @@ app.get('/health', (req, res) => {
   })
 })
 
-// Test endpoint for admin routes
-app.get('/api/test-admin', (req, res) => {
-  res.json({ 
-    message: 'Admin routes are working',
-    timestamp: new Date().toISOString()
-  })
-})
-
-// Monitor all users (for debugging)
-app.get('/api/monitor/users', async (req, res) => {
-  try {
-    console.log('🔍 Production user monitoring request')
-    
-    const users = await prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        role: true,
-        isApproved: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true
-      }
-    })
-    
-    console.log(`📊 Production database has ${users.length} users`)
-    
-    // Log each user for debugging
-    users.forEach((user, index) => {
-      console.log(`${index + 1}. ${user.firstName} ${user.lastName} (${user.email}) - ${user.role} - Approved: ${user.isApproved}`)
-    })
-    
-    res.json({
-      success: true,
-      totalUsers: users.length,
-      users: users,
-      database: 'Production Railway Database',
-      timestamp: new Date().toISOString()
-    })
-    
-  } catch (error: any) {
-    console.error('❌ Production user monitoring error:', error)
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      message: 'Failed to get users from production database'
-    })
-  }
-})
+// Security: Removed public endpoints that exposed sensitive data
+// /api/monitor/users and /api/test-admin have been removed for security
 
 // API Routes
 app.use('/api/auth', authRoutes)

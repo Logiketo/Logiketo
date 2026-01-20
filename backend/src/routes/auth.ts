@@ -3,11 +3,22 @@ import bcrypt from 'bcryptjs'
 import jwt, { SignOptions } from 'jsonwebtoken'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
+import rateLimit from 'express-rate-limit'
 import { authenticate, AuthRequest } from '../middleware/auth'
 import { emailService } from '../services/emailService'
 
 const router = express.Router()
 const prisma = new PrismaClient()
+
+// Stricter rate limiting for login endpoint (5 attempts per 15 minutes)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 login attempts per IP per window
+  message: 'Too many login attempts. Please try again after 15 minutes.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false // Count all attempts, even successful ones
+})
 
 // Validation schemas
 const registerSchema = z.object({
@@ -104,8 +115,8 @@ router.post('/register', async (req, res) => {
   */
 })
 
-// Login user
-router.post('/login', async (req, res) => {
+// Login user with strict rate limiting
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const validatedData = loginSchema.parse(req.body)
 
@@ -118,37 +129,33 @@ router.post('/login', async (req, res) => {
     
     const user = (userResult as any)[0]
 
+    // Security: Always return the same error message to prevent account enumeration
+    // Don't reveal if account exists, is active, or is approved
+    const genericError = {
+      success: false,
+      message: 'Invalid credentials'
+    }
+
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      })
+      return res.status(401).json(genericError)
     }
 
-    // Check if user is active
-    if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account is deactivated'
-      })
-    }
-
-    // Check if user is approved
-    if (!user.isApproved) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account is pending admin approval. Please wait for approval before logging in.'
-      })
-    }
-
-    // Verify password
+    // Verify password first (before checking status) to prevent timing attacks
     const isPasswordValid = await bcrypt.compare(validatedData.password, user.password)
 
+    // Security: Always perform password check, then return generic error
+    // This prevents attackers from determining if account exists
     if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      })
+      return res.status(401).json(genericError)
+    }
+
+    // Only check account status after password is verified
+    if (!user.isActive) {
+      return res.status(401).json(genericError)
+    }
+
+    if (!user.isApproved) {
+      return res.status(401).json(genericError)
     }
 
     // Generate JWT token
@@ -460,70 +467,8 @@ router.delete('/reject-user/:userId', authenticate, async (req: AuthRequest, res
   }
 })
 
-// Monitor all users (for debugging)
-router.get('/monitor/users', async (req, res) => {
-  try {
-    console.log('🔍 Production user monitoring request')
-    
-    const users = await prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        role: true,
-        isApproved: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true
-      }
-    })
-    
-    console.log(`📊 Production database has ${users.length} users`)
-    
-    // Log each user for debugging
-    users.forEach((user, index) => {
-      console.log(`${index + 1}. ${user.firstName} ${user.lastName} (${user.email}) - ${user.role} - Approved: ${user.isApproved}`)
-    })
-    
-    res.json({
-      success: true,
-      totalUsers: users.length,
-      users: users,
-      database: 'Production Railway Database',
-      timestamp: new Date().toISOString()
-    })
-    
-  } catch (error: any) {
-    console.error('❌ Production user monitoring error:', error)
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      message: 'Failed to get users from production database'
-    })
-  }
-})
-
-// Database info endpoint
-router.get('/monitor/database', async (req, res) => {
-  try {
-    const dbInfo = await prisma.$queryRaw`SELECT current_database(), current_user, version()` as any[]
-    const userCount = await prisma.$queryRaw`SELECT COUNT(*) as count FROM users` as any[]
-    
-    res.json({
-      success: true,
-      databaseInfo: dbInfo[0],
-      userCount: userCount[0].count,
-      connectionString: process.env.DATABASE_URL ? 'Set' : 'Not set',
-      timestamp: new Date().toISOString()
-    })
-  } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    })
-  }
-})
+// Security: Removed public monitor endpoints that exposed sensitive data
+// /monitor/users and /monitor/database have been removed for security
+// Use authenticated admin routes instead: /all-users (requires ADMIN role)
 
 export default router
