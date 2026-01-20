@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { User, Camera, Phone, Mail, MapPin, Save, Eye, EyeOff } from 'lucide-react'
+import api from '@/services/api'
 
 export default function Settings() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
@@ -112,19 +113,12 @@ export default function Settings() {
     
     try {
       // Call backend API to change password
-      const response = await fetch('/api/auth/change-password', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword
-        })
+      const response = await api.put('/auth/change-password', {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
       })
       
-      const result = await response.json()
+      const result = response.data
       
       if (result.success) {
         // Save timestamp to localStorage for display
