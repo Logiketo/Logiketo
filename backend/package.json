@@ -13,7 +13,9 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "ts-node prisma/seed.ts"
+    "db:seed": "ts-node prisma/seed.ts",
+    "fix:enums": "node fix-enum-types.js",
+    "fix:railway": "node fix-railway-database.js"
   },
   "dependencies": {
     "@prisma/client": "^5.6.0",

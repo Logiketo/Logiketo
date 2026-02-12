@@ -57,40 +57,78 @@ router.get('/loads', authenticate, async (req: AuthRequest, res) => {
     const { period, startDate, endDate, limit } = reportQuerySchema.parse(req.query)
     const { start, end } = getDateRange(period, startDate, endDate)
 
-    const loadsData = await prisma.order.findMany({
-      where: {
-        createdAt: {
-          gte: start,
-          lte: end
-        }
-      },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        driver: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true
-          }
-        },
-        vehicle: {
-          select: {
-            id: true,
-            make: true,
-            model: true,
-            licensePlate: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+    // Use raw SQL to avoid enum type issues
+    const loadsDataRaw = await prisma.$queryRawUnsafe(`
+      SELECT
+        o.id,
+        o."orderNumber",
+        o."customerLoadNumber",
+        o."pickupAddress",
+        o."deliveryAddress",
+        o."pickupDate",
+        o."deliveryDate",
+        CAST(o.status AS TEXT) as status,
+        CAST(o.priority AS TEXT) as priority,
+        o.description,
+        o.miles,
+        o.pieces,
+        o.weight,
+        o."loadPay",
+        o."driverPay",
+        o.notes,
+        o."createdAt",
+        json_build_object(
+          'id', c.id,
+          'name', c.name
+        ) as customer,
+        CASE
+          WHEN u.id IS NOT NULL THEN json_build_object(
+            'id', u.id,
+            'firstName', u."firstName",
+            'lastName', u."lastName"
+          )
+          ELSE NULL
+        END as driver,
+        CASE
+          WHEN v.id IS NOT NULL THEN json_build_object(
+            'id', v.id,
+            'make', v.make,
+            'model', v.model,
+            'licensePlate', v."licensePlate"
+          )
+          ELSE NULL
+        END as vehicle
+      FROM orders o
+      LEFT JOIN customers c ON o."customerId" = c.id
+      LEFT JOIN users u ON o."driverId" = u.id
+      LEFT JOIN vehicles v ON o."vehicleId" = v.id
+      WHERE o."createdAt" >= '${start.toISOString()}'
+        AND o."createdAt" <= '${end.toISOString()}'
+      ORDER BY o."createdAt" DESC
+    `) as any[]
+    
+    const loadsData = loadsDataRaw.map((row: any) => ({
+      id: row.id,
+      orderNumber: row.orderNumber,
+      customerLoadNumber: row.customerLoadNumber,
+      pickupAddress: row.pickupAddress,
+      deliveryAddress: row.deliveryAddress,
+      pickupDate: row.pickupDate,
+      deliveryDate: row.deliveryDate,
+      status: row.status,
+      priority: row.priority,
+      description: row.description,
+      miles: row.miles ? parseFloat(row.miles) : null,
+      pieces: row.pieces ? parseInt(row.pieces) : null,
+      weight: row.weight ? parseFloat(row.weight) : null,
+      loadPay: row.loadPay ? parseFloat(row.loadPay) : null,
+      driverPay: row.driverPay ? parseFloat(row.driverPay) : null,
+      notes: row.notes,
+      createdAt: row.createdAt,
+      customer: row.customer,
+      driver: row.driver,
+      vehicle: row.vehicle
+    }))
 
     // Calculate totals
     const totalQuantity = loadsData.length
@@ -220,25 +258,29 @@ router.get('/top-employees', authenticate, async (req: AuthRequest, res) => {
     })
 
     // Get orders for the period with employee information
-    const orders = await prisma.order.findMany({
-      where: {
-        createdAt: {
-          gte: start,
-          lte: end
-        },
-        employeeId: {
-          not: null
-        }
-      },
-      select: {
-        id: true,
-        employeeId: true,
-        loadPay: true,
-        driverPay: true,
-        status: true,
-        createdAt: true
-      }
-    })
+    // Use raw SQL to avoid enum type issues
+    const ordersRaw = await prisma.$queryRawUnsafe(`
+      SELECT
+        id,
+        "employeeId",
+        "loadPay",
+        "driverPay",
+        CAST(status AS TEXT) as status,
+        "createdAt"
+      FROM orders
+      WHERE "createdAt" >= '${start.toISOString()}'
+        AND "createdAt" <= '${end.toISOString()}'
+        AND "employeeId" IS NOT NULL
+    `) as any[]
+    
+    const orders = ordersRaw.map((row: any) => ({
+      id: row.id,
+      employeeId: row.employeeId,
+      loadPay: row.loadPay ? parseFloat(row.loadPay) : null,
+      driverPay: row.driverPay ? parseFloat(row.driverPay) : null,
+      status: row.status,
+      createdAt: row.createdAt
+    }))
 
     // Group orders by employee
     const employeeOrdersMap = new Map<string, typeof orders>()
@@ -318,34 +360,39 @@ router.get('/top-units', authenticate, async (req: AuthRequest, res) => {
     })
 
     // Get orders for the period with vehicle information
-    const orders = await prisma.order.findMany({
-      where: {
-        createdAt: {
-          gte: start,
-          lte: end
-        },
-        vehicleId: {
-          not: null
-        }
-      },
-      select: {
-        id: true,
-        vehicleId: true,
-        loadPay: true,
-        driverPay: true,
-        status: true,
-        createdAt: true,
-        miles: true,
-        vehicle: {
-          select: {
-            id: true,
-            make: true,
-            model: true,
-            licensePlate: true
-          }
-        }
-      }
-    })
+    // Use raw SQL to avoid enum type issues
+    const ordersRaw = await prisma.$queryRawUnsafe(`
+      SELECT
+        o.id,
+        o."vehicleId",
+        o."loadPay",
+        o."driverPay",
+        CAST(o.status AS TEXT) as status,
+        o."createdAt",
+        o.miles,
+        json_build_object(
+          'id', v.id,
+          'make', v.make,
+          'model', v.model,
+          'licensePlate', v."licensePlate"
+        ) as vehicle
+      FROM orders o
+      LEFT JOIN vehicles v ON o."vehicleId" = v.id
+      WHERE o."createdAt" >= '${start.toISOString()}'
+        AND o."createdAt" <= '${end.toISOString()}'
+        AND o."vehicleId" IS NOT NULL
+    `) as any[]
+    
+    const orders = ordersRaw.map((row: any) => ({
+      id: row.id,
+      vehicleId: row.vehicleId,
+      loadPay: row.loadPay ? parseFloat(row.loadPay) : null,
+      driverPay: row.driverPay ? parseFloat(row.driverPay) : null,
+      status: row.status,
+      createdAt: row.createdAt,
+      miles: row.miles ? parseFloat(row.miles) : null,
+      vehicle: row.vehicle
+    }))
 
     // Group orders by vehicle/unit
     const unitOrdersMap = new Map<string, typeof orders>()
@@ -598,50 +645,64 @@ router.get('/analytics', authenticate, async (req: AuthRequest, res) => {
       revenueData,
       statusBreakdown
     ] = await Promise.all([
-      prisma.order.count(),
+      prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM orders`).then((r: any) => r[0].count),
       prisma.customer.count(),
       prisma.employee.count(),
       prisma.user.count({ where: { role: 'DRIVER' } }),
       prisma.vehicle.count(),
       prisma.unit.count(),
-      prisma.order.findMany({
-        where: {
-          createdAt: {
-            gte: start,
-            lte: end
+      // Use raw SQL to avoid enum type issues
+      (async () => {
+        const result = await prisma.$queryRawUnsafe(`
+          SELECT
+            "loadPay",
+            "driverPay",
+            CAST(status AS TEXT) as status,
+            "createdAt"
+          FROM orders
+          WHERE "createdAt" >= '${start.toISOString()}'
+            AND "createdAt" <= '${end.toISOString()}'
+        `) as any[]
+        return result.map((row: any) => ({
+          loadPay: row.loadPay ? parseFloat(row.loadPay) : null,
+          driverPay: row.driverPay ? parseFloat(row.driverPay) : null,
+          status: row.status,
+          createdAt: row.createdAt
+        }))
+      })(),
+      // Use raw SQL to avoid enum type issues
+      (async () => {
+        const result = await prisma.$queryRawUnsafe(`
+          SELECT
+            COALESCE(SUM("loadPay"), 0) as loadPay,
+            COALESCE(SUM("driverPay"), 0) as driverPay
+          FROM orders
+          WHERE "createdAt" >= '${start.toISOString()}'
+            AND "createdAt" <= '${end.toISOString()}'
+        `) as any[]
+        return {
+          _sum: {
+            loadPay: result[0]?.loadPay ? parseFloat(result[0].loadPay) : 0,
+            driverPay: result[0]?.driverPay ? parseFloat(result[0].driverPay) : 0
           }
-        },
-        select: {
-          loadPay: true,
-          driverPay: true,
-          status: true,
-          createdAt: true
         }
-      }),
-      prisma.order.aggregate({
-        where: {
-          createdAt: {
-            gte: start,
-            lte: end
-          }
-        },
-        _sum: {
-          loadPay: true,
-          driverPay: true
-        }
-      }),
-      prisma.order.groupBy({
-        by: ['status'],
-        where: {
-          createdAt: {
-            gte: start,
-            lte: end
-          }
-        },
-        _count: {
-          id: true
-        }
-      })
+      })(),
+      // Use raw SQL to avoid enum issues with groupBy
+      (async () => {
+        const result = await prisma.$queryRawUnsafe(`
+          SELECT 
+            CAST(status AS TEXT) as status,
+            COUNT(*)::int as count
+          FROM orders
+          WHERE "createdAt" >= '${start.toISOString()}'
+            AND "createdAt" <= '${end.toISOString()}'
+          GROUP BY status
+        `) as any[]
+        return result.map((row: any) => ({
+          status: row.status,
+          _count: { id: row.count }
+        }))
+      })()
     ])
 
     const totalRevenue = revenueData._sum.loadPay || 0
