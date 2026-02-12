@@ -1,4 +1,6 @@
 import multer from 'multer'
+/// <reference types="express" />
+/// <reference types="multer" />
 import path from 'path'
 import fs from 'fs'
 

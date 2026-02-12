@@ -5,16 +5,12 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 export interface AuthRequest extends Request {
-  user?: {
-    id: string
-    email: string
-    role: string
-  }
+  user?: { id: string; email: string; role: string }
 }
 
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '')
+    const token = req.get('Authorization')?.replace('Bearer ', '')
 
     if (!token) {
       return res.status(401).json({ success: false, message: 'No token, authorization denied' })
