@@ -1,10 +1,16 @@
 import express from 'express'
 import { PrismaClient } from '@prisma/client'
-import { authenticate } from '../middleware/auth'
+import { authenticate, AuthRequest } from '../middleware/auth'
+import { canSeeAllData } from '../utils/dataAccess'
 import { z } from 'zod'
 
 const router = express.Router()
 const prisma = new PrismaClient()
+
+function ownershipFilter(req: AuthRequest): string {
+  if (canSeeAllData(req.user!.role)) return ''
+  return ` AND c."createdById" = '${String(req.user!.id).replace(/'/g, "''")}'`
+}
 
 // Validation schemas
 const assignOrderSchema = z.object({
@@ -24,8 +30,9 @@ const updateDispatchStatusSchema = z.object({
 })
 
 // Get dispatch dashboard data
-router.get('/dashboard', authenticate, async (req, res) => {
+router.get('/dashboard', authenticate, async (req: AuthRequest, res) => {
   try {
+    const of = ownershipFilter(req)
     // Use raw SQL queries to avoid enum type issues
     const [
       pendingOrdersRaw,
@@ -69,7 +76,7 @@ router.get('/dashboard', authenticate, async (req, res) => {
         LEFT JOIN customers c ON o."customerId" = c.id
         LEFT JOIN vehicles v ON o."vehicleId" = v.id
         LEFT JOIN users u ON v."driverId" = u.id
-        WHERE CAST(o.status AS TEXT) = 'PENDING'
+        WHERE CAST(o.status AS TEXT) = 'PENDING'${of}
         ORDER BY o."createdAt" DESC
         LIMIT 10
       `) as Promise<any[]>,
@@ -126,25 +133,27 @@ router.get('/dashboard', authenticate, async (req, res) => {
         LEFT JOIN customers c ON o."customerId" = c.id
         LEFT JOIN vehicles v ON o."vehicleId" = v.id
         LEFT JOIN users u ON v."driverId" = u.id
-        WHERE CAST(o.status AS TEXT) IN ('ASSIGNED', 'IN_TRANSIT')
+        WHERE CAST(o.status AS TEXT) IN ('ASSIGNED', 'IN_TRANSIT')${of}
         ORDER BY o."updatedAt" DESC
       `) as Promise<any[]>,
 
-      // Available vehicles
+      // Available vehicles (filter by ownership for non-admin)
       prisma.vehicle.findMany({
         where: { 
           status: 'AVAILABLE',
-          driver: { isNot: null }
+          driver: { isNot: null },
+          ...(canSeeAllData(req.user!.role) ? {} : { createdById: req.user!.id })
         },
         include: { driver: true },
         orderBy: { updatedAt: 'desc' }
       }),
 
-      // Available drivers (employees who are drivers)
+      // Available drivers - employees (filter by ownership for non-admin)
       prisma.employee.findMany({
         where: { 
           status: 'ACTIVE',
-          position: { contains: 'driver', mode: 'insensitive' }
+          position: { contains: 'driver', mode: 'insensitive' },
+          ...(canSeeAllData(req.user!.role) ? {} : { createdById: req.user!.id })
         },
         orderBy: { firstName: 'asc' }
       }),
@@ -201,7 +210,7 @@ router.get('/dashboard', authenticate, async (req, res) => {
         LEFT JOIN customers c ON o."customerId" = c.id
         LEFT JOIN vehicles v ON o."vehicleId" = v.id
         LEFT JOIN users u ON v."driverId" = u.id
-        WHERE CAST(o.status AS TEXT) IN ('ASSIGNED', 'IN_TRANSIT', 'DELIVERED')
+        WHERE CAST(o.status AS TEXT) IN ('ASSIGNED', 'IN_TRANSIT', 'DELIVERED')${of}
         ORDER BY o."updatedAt" DESC
         LIMIT 20
       `) as Promise<any[]>
@@ -254,7 +263,7 @@ router.get('/dashboard', authenticate, async (req, res) => {
 })
 
 // Assign order to vehicle and driver
-router.post('/assign', authenticate, async (req, res) => {
+router.post('/assign', authenticate, async (req: AuthRequest, res) => {
   try {
     const validatedData = assignOrderSchema.parse(req.body)
     const { orderId, vehicleId, driverId } = validatedData
@@ -263,6 +272,7 @@ router.post('/assign', authenticate, async (req, res) => {
     const orderRaw = await prisma.$queryRawUnsafe(`
       SELECT 
         o.*,
+        c."createdById" as "customer_createdById",
         CAST(o.status AS TEXT) as status,
         CAST(o.priority AS TEXT) as priority,
         CASE 
@@ -276,6 +286,7 @@ router.post('/assign', authenticate, async (req, res) => {
           ELSE NULL
         END as vehicle
       FROM orders o
+      LEFT JOIN customers c ON o."customerId" = c.id
       LEFT JOIN vehicles v ON o."vehicleId" = v.id
       WHERE o.id = '${orderId.replace(/'/g, "''")}'
     `) as any[]
@@ -299,6 +310,10 @@ router.post('/assign', authenticate, async (req, res) => {
       })
     }
 
+    if (!canSeeAllData(req.user!.role) && order.customer_createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
+    }
+
     // Check if vehicle exists and is available
     const vehicle = await prisma.vehicle.findUnique({
       where: { id: vehicleId },
@@ -319,7 +334,11 @@ router.post('/assign', authenticate, async (req, res) => {
       })
     }
 
-    // Check if driver exists and is available
+    if (!canSeeAllData(req.user!.role) && vehicle.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'You can only assign your own vehicles' })
+    }
+
+    // Check if driver exists and is available (driver is Employee)
     const driver = await prisma.employee.findUnique({
       where: { id: driverId }
     })
@@ -336,6 +355,10 @@ router.post('/assign', authenticate, async (req, res) => {
         success: false,
         message: 'Driver is not active'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && driver.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'You can only assign your own employees' })
     }
 
     // Update vehicle driver if different
@@ -432,7 +455,7 @@ router.post('/assign', authenticate, async (req, res) => {
 })
 
 // Update dispatch status (for real-time tracking)
-router.patch('/:orderId/status', authenticate, async (req, res) => {
+router.patch('/:orderId/status', authenticate, async (req: AuthRequest, res) => {
   try {
     const { orderId } = req.params
     const validatedData = updateDispatchStatusSchema.parse(req.body)
@@ -442,9 +465,11 @@ router.patch('/:orderId/status', authenticate, async (req, res) => {
     const orderRaw = await prisma.$queryRawUnsafe(`
       SELECT 
         o.*,
+        c."createdById" as "customer_createdById",
         CAST(o.status AS TEXT) as status,
-        "vehicleId"
+        o."vehicleId"
       FROM orders o
+      LEFT JOIN customers c ON o."customerId" = c.id
       WHERE o.id = '${orderId.replace(/'/g, "''")}'
     `) as any[]
 
@@ -456,6 +481,9 @@ router.patch('/:orderId/status', authenticate, async (req, res) => {
     }
 
     const order = orderRaw[0]
+    if (!canSeeAllData(req.user!.role) && order.customer_createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
+    }
 
     // Update order status - using raw SQL
     await prisma.$executeRawUnsafe(`
@@ -556,14 +584,14 @@ router.patch('/:orderId/status', authenticate, async (req, res) => {
 })
 
 // Get order tracking details
-router.get('/track/:orderId', authenticate, async (req, res) => {
+router.get('/track/:orderId', authenticate, async (req: AuthRequest, res) => {
   try {
     const { orderId } = req.params
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        customer: true,
+        customer: { select: { id: true, name: true, email: true, createdById: true } },
         vehicle: {
           include: { driver: true }
         },
@@ -580,6 +608,10 @@ router.get('/track/:orderId', authenticate, async (req, res) => {
       })
     }
 
+    if (!canSeeAllData(req.user!.role) && order.customer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
+    }
+
     return res.json({
       success: true,
       data: order
@@ -594,8 +626,9 @@ router.get('/track/:orderId', authenticate, async (req, res) => {
 })
 
 // Get available vehicles for dispatch
-router.get('/vehicles/available', authenticate, async (req, res) => {
+router.get('/vehicles/available', authenticate, async (req: AuthRequest, res) => {
   try {
+    const vFilter = canSeeAllData(req.user!.role) ? '' : ` AND v."createdById" = '${String(req.user!.id).replace(/'/g, "''")}'`
     // Use raw SQL to avoid enum issues with orders.status
     const vehiclesRaw = await prisma.$queryRawUnsafe(`
       SELECT 
@@ -627,7 +660,7 @@ router.get('/vehicles/available', authenticate, async (req, res) => {
       FROM vehicles v
       LEFT JOIN users u ON v."driverId" = u.id
       WHERE CAST(v.status AS TEXT) = 'AVAILABLE'
-        AND v."driverId" IS NOT NULL
+        AND v."driverId" IS NOT NULL${vFilter}
       ORDER BY v."updatedAt" DESC
     `) as any[]
 
@@ -651,12 +684,13 @@ router.get('/vehicles/available', authenticate, async (req, res) => {
 })
 
 // Get available drivers
-router.get('/drivers/available', authenticate, async (req, res) => {
+router.get('/drivers/available', authenticate, async (req: AuthRequest, res) => {
   try {
     const drivers = await prisma.employee.findMany({
       where: { 
         status: 'ACTIVE',
-        position: { contains: 'driver', mode: 'insensitive' }
+        position: { contains: 'driver', mode: 'insensitive' },
+        ...(canSeeAllData(req.user!.role) ? {} : { createdById: req.user!.id })
       },
       orderBy: { firstName: 'asc' }
     })

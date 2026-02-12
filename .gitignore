@@ -87,8 +87,8 @@ jspm_packages/
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
-# Prisma
-prisma/migrations/
+# Prisma (migrations committed for Railway deploy)
+# prisma/migrations/
 
 # Uploads
 uploads/

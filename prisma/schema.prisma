@@ -23,9 +23,11 @@ model User {
   updatedAt  DateTime @updatedAt
 
   // Relations
-  orders    Order[]
-  vehicles  Vehicle[]
-  customers Customer[]
+  orders       Order[]
+  vehicles     Vehicle[]
+  customers    Customer[]
+  employees    Employee[]
+  vehiclesOwned Vehicle[] @relation("VehicleOwner")
 
   @@map("users")
 }
@@ -66,6 +68,7 @@ model Vehicle {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   driverId    String?
+  createdById String?    // User who owns this vehicle (null = legacy)
   
   // New fields for enhanced vehicle information
   unitNumber  String?     // Custom unit number
@@ -79,9 +82,10 @@ model Vehicle {
   documents Json?             // Array of document objects with name, path, uploadDate
 
   // Relations
-  driver User?   @relation(fields: [driverId], references: [id])
-  orders Order[]
-  unit   Unit?
+  driver    User?   @relation(fields: [driverId], references: [id])
+  createdBy User?   @relation("VehicleOwner", fields: [createdById], references: [id])
+  orders    Order[]
+  unit      Unit?
 
   @@map("vehicles")
 }
@@ -139,10 +143,10 @@ model TrackingEvent {
 
 model Employee {
   id          String        @id @default(cuid())
-  employeeId  String        @unique
+  employeeId  String
   firstName   String
   lastName    String
-  email       String        @unique
+  email       String
   phone       String?
   position    String
   department  String?
@@ -153,7 +157,13 @@ model Employee {
   emergencyContact String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  createdById String
 
+  // Relations
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  @@unique([employeeId, createdById])
+  @@unique([email, createdById])
   @@map("employees")
 }
 

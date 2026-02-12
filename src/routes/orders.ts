@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import { authenticate, AuthRequest } from '../middleware/auth'
 import { uploadOrderDocuments } from '../middleware/upload'
+import { canSeeAllData } from '../utils/dataAccess'
 
 const router = express.Router()
 const prisma = new PrismaClient()
@@ -86,7 +87,7 @@ const generateOrderNumber = async (): Promise<string> => {
 }
 
 // Get all orders
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const { 
       page = '1', 
@@ -117,7 +118,12 @@ router.get('/', authenticate, async (req, res) => {
 
     // Use raw SQL to avoid enum type issues - build WHERE clause for raw SQL
     let whereConditions: string[] = []
-    
+
+    // Ownership: regular users see only orders for customers they created
+    if (!canSeeAllData(req.user!.role)) {
+      whereConditions.push(`c."createdById" = '${String(req.user!.id).replace(/'/g, "''")}'`)
+    }
+
     if (search) {
       const searchStr = String(search)
       whereConditions.push(`(
@@ -372,7 +378,7 @@ router.get('/', authenticate, async (req, res) => {
 })
 
 // Get order by ID
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
 
@@ -388,7 +394,8 @@ router.get('/:id', authenticate, async (req, res) => {
             city: true,
             state: true,
             zipCode: true,
-            country: true
+            country: true,
+            createdById: true
           }
         },
         vehicle: {
@@ -422,6 +429,10 @@ router.get('/:id', authenticate, async (req, res) => {
         success: false,
         message: 'Order not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && order.customer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     // Debug logging for single order
@@ -503,6 +514,10 @@ router.post('/', authenticate, uploadOrderDocuments, async (req: AuthRequest, re
         success: false,
         message: 'Customer not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && customer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'You can only create orders for your own customers' })
     }
 
     // Check if vehicle exists and is available (if provided)
@@ -659,7 +674,8 @@ router.put('/:id', authenticate, uploadOrderDocuments, async (req: AuthRequest, 
     }
     
     const existingOrder = await prisma.order.findUnique({
-      where: { id }
+      where: { id },
+      include: { customer: { select: { createdById: true } } }
     })
 
     if (!existingOrder) {
@@ -667,6 +683,10 @@ router.put('/:id', authenticate, uploadOrderDocuments, async (req: AuthRequest, 
         success: false,
         message: 'Order not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && existingOrder.customer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     // Handle existing document notes updates
@@ -689,15 +709,18 @@ router.put('/:id', authenticate, uploadOrderDocuments, async (req: AuthRequest, 
 
     // Check if customer exists (if being updated)
     if (validatedData.customerId && validatedData.customerId !== existingOrder.customerId) {
-      const customer = await prisma.customer.findUnique({
+      const newCustomer = await prisma.customer.findUnique({
         where: { id: validatedData.customerId }
       })
 
-      if (!customer) {
+      if (!newCustomer) {
         return res.status(400).json({
           success: false,
           message: 'Customer not found'
         })
+      }
+      if (!canSeeAllData(req.user!.role) && newCustomer.createdById !== req.user!.id) {
+        return res.status(403).json({ success: false, message: 'You can only assign orders to your own customers' })
       }
     }
 
@@ -893,7 +916,8 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
     const { id } = req.params
 
     const existingOrder = await prisma.order.findUnique({
-      where: { id }
+      where: { id },
+      include: { customer: { select: { createdById: true } } }
     })
 
     if (!existingOrder) {
@@ -901,6 +925,10 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
         success: false,
         message: 'Order not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && existingOrder.customer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     // Only allow deletion of pending orders
@@ -951,7 +979,7 @@ router.delete('/:id/documents/:documentIndex', authenticate, async (req: AuthReq
 
     const order = await prisma.order.findUnique({
       where: { id },
-      select: { documents: true }
+      select: { documents: true, customer: { select: { createdById: true } } }
     })
 
     if (!order) {
@@ -959,6 +987,10 @@ router.delete('/:id/documents/:documentIndex', authenticate, async (req: AuthReq
         success: false,
         message: 'Order not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && order.customer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     let documents: any[] = []

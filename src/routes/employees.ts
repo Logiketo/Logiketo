@@ -1,6 +1,7 @@
 import express from 'express'
 import { PrismaClient } from '@prisma/client'
-import { authenticate } from '../middleware/auth'
+import { authenticate, AuthRequest } from '../middleware/auth'
+import { canSeeAllData } from '../utils/dataAccess'
 import { z } from 'zod'
 
 const router = express.Router()
@@ -25,7 +26,7 @@ const createEmployeeSchema = z.object({
 const updateEmployeeSchema = createEmployeeSchema.partial().omit({ employeeId: true })
 
 // Get all employees with pagination, search, and filtering
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1
     const limit = parseInt(req.query.limit as string) || 10
@@ -35,17 +36,24 @@ router.get('/', authenticate, async (req, res) => {
 
     const skip = (page - 1) * limit
 
-    // Build where clause
+    // Build where clause - ownership: users see only their employees
     const where: any = {}
+    if (!canSeeAllData(req.user!.role)) {
+      where.createdById = req.user!.id
+    }
     
     if (search) {
-      where.OR = [
-        { firstName: { contains: search, mode: 'insensitive' as const } },
-        { lastName: { contains: search, mode: 'insensitive' as const } },
-        { email: { contains: search, mode: 'insensitive' as const } },
-        { employeeId: { contains: search, mode: 'insensitive' as const } },
-        { position: { contains: search, mode: 'insensitive' as const } }
-      ]
+      const searchOr = {
+        OR: [
+          { firstName: { contains: search, mode: 'insensitive' as const } },
+          { lastName: { contains: search, mode: 'insensitive' as const } },
+          { email: { contains: search, mode: 'insensitive' as const } },
+          { employeeId: { contains: search, mode: 'insensitive' as const } },
+          { position: { contains: search, mode: 'insensitive' as const } }
+        ]
+      }
+      where.AND = Object.keys(where).length > 0 ? [where, searchOr] : [searchOr]
+      if (where.createdById) delete where.createdById
     }
 
     if (status) {
@@ -86,7 +94,7 @@ router.get('/', authenticate, async (req, res) => {
 })
 
 // Get employee by ID
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
 
@@ -99,6 +107,10 @@ router.get('/:id', authenticate, async (req, res) => {
         success: false,
         message: 'Employee not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && employee.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     return res.json({
@@ -115,13 +127,13 @@ router.get('/:id', authenticate, async (req, res) => {
 })
 
 // Create new employee
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const validatedData = createEmployeeSchema.parse(req.body)
 
-    // Check if employee ID already exists
+    // Check if employee ID already exists for this user
     const existingEmployeeId = await prisma.employee.findUnique({
-      where: { employeeId: validatedData.employeeId }
+      where: { employeeId_createdById: { employeeId: validatedData.employeeId, createdById: req.user!.id } }
     })
 
     if (existingEmployeeId) {
@@ -131,9 +143,9 @@ router.post('/', authenticate, async (req, res) => {
       })
     }
 
-    // Check if email already exists
+    // Check if email already exists for this user
     const existingEmail = await prisma.employee.findUnique({
-      where: { email: validatedData.email }
+      where: { email_createdById: { email: validatedData.email, createdById: req.user!.id } }
     })
 
     if (existingEmail) {
@@ -144,7 +156,7 @@ router.post('/', authenticate, async (req, res) => {
     }
 
     const employee = await prisma.employee.create({
-      data: validatedData as any
+      data: { ...validatedData, createdById: req.user!.id } as any
     })
 
     return res.status(201).json({
@@ -170,7 +182,7 @@ router.post('/', authenticate, async (req, res) => {
 })
 
 // Update employee
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
     const validatedData = updateEmployeeSchema.parse(req.body)
@@ -187,10 +199,14 @@ router.put('/:id', authenticate, async (req, res) => {
       })
     }
 
-    // Check if email is being updated and already exists
+    if (!canSeeAllData(req.user!.role) && existingEmployee.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
+    }
+
+    // Check if email is being updated and already exists (for this user)
     if (validatedData.email && validatedData.email !== existingEmployee.email) {
       const emailExists = await prisma.employee.findUnique({
-        where: { email: validatedData.email }
+        where: { email_createdById: { email: validatedData.email, createdById: req.user!.id } }
       })
 
       if (emailExists) {
@@ -229,7 +245,7 @@ router.put('/:id', authenticate, async (req, res) => {
 })
 
 // Update employee status
-router.patch('/:id/status', authenticate, async (req, res) => {
+router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
     const { status } = req.body
@@ -239,6 +255,12 @@ router.patch('/:id/status', authenticate, async (req, res) => {
         success: false,
         message: 'Invalid status'
       })
+    }
+
+    const existing = await prisma.employee.findUnique({ where: { id } })
+    if (!existing) return res.status(404).json({ success: false, message: 'Employee not found' })
+    if (!canSeeAllData(req.user!.role) && existing.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     const employee = await prisma.employee.update({
@@ -261,7 +283,7 @@ router.patch('/:id/status', authenticate, async (req, res) => {
 })
 
 // Delete employee
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
 
@@ -274,6 +296,10 @@ router.delete('/:id', authenticate, async (req, res) => {
         success: false,
         message: 'Employee not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && employee.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     await prisma.employee.delete({

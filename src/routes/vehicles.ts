@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import { authenticate, AuthRequest } from '../middleware/auth'
 import { uploadVehicleDocuments } from '../middleware/upload'
+import { canSeeAllData } from '../utils/dataAccess'
 
 const router = express.Router()
 const prisma = new PrismaClient()
@@ -36,7 +37,7 @@ const createVehicleSchema = z.object({
 const updateVehicleSchema = createVehicleSchema.partial()
 
 // Get all vehicles
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const { page = '1', limit = '10', search = '', status = '' } = req.query
     const pageNum = parseInt(page as string)
@@ -44,24 +45,30 @@ router.get('/', authenticate, async (req, res) => {
     const skip = (pageNum - 1) * limitNum
 
     const where: any = {}
-    
+    if (!canSeeAllData(req.user!.role)) {
+      where.createdById = req.user!.id
+    }
     if (search) {
-      where.OR = [
-        { make: { contains: search as string, mode: 'insensitive' as const } },
-        { model: { contains: search as string, mode: 'insensitive' as const } },
-        { licensePlate: { contains: search as string, mode: 'insensitive' as const } },
-        { vin: { contains: search as string, mode: 'insensitive' as const } },
-        { unitNumber: { contains: search as string, mode: 'insensitive' as const } },
-        { driverName: { contains: search as string, mode: 'insensitive' as const } },
-        { 
-          driver: {
-            OR: [
-              { firstName: { contains: search as string, mode: 'insensitive' as const } },
-              { lastName: { contains: search as string, mode: 'insensitive' as const } }
-            ]
+      const searchOr = {
+        OR: [
+          { make: { contains: search as string, mode: 'insensitive' as const } },
+          { model: { contains: search as string, mode: 'insensitive' as const } },
+          { licensePlate: { contains: search as string, mode: 'insensitive' as const } },
+          { vin: { contains: search as string, mode: 'insensitive' as const } },
+          { unitNumber: { contains: search as string, mode: 'insensitive' as const } },
+          { driverName: { contains: search as string, mode: 'insensitive' as const } },
+          { 
+            driver: {
+              OR: [
+                { firstName: { contains: search as string, mode: 'insensitive' as const } },
+                { lastName: { contains: search as string, mode: 'insensitive' as const } }
+              ]
+            }
           }
-        }
-      ]
+        ]
+      }
+      where.AND = Object.keys(where).length > 0 ? [where, searchOr] : [searchOr]
+      if (where.createdById) delete where.createdById
     }
 
     if (status) {
@@ -141,7 +148,7 @@ router.get('/', authenticate, async (req, res) => {
 })
 
 // Get vehicle by ID
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
 
@@ -149,6 +156,7 @@ router.get('/:id', authenticate, async (req, res) => {
       where: { id },
       select: {
         id: true,
+        createdById: true,
         unitNumber: true,
         make: true,
         model: true,
@@ -197,6 +205,10 @@ router.get('/:id', authenticate, async (req, res) => {
       })
     }
 
+    if (!canSeeAllData(req.user!.role) && vehicle.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
+    }
+
     // Debug: Log the vehicle's documents field
     console.log('Vehicle documents:', vehicle.documents)
 
@@ -242,9 +254,10 @@ router.post('/', authenticate, uploadVehicleDocuments, async (req: AuthRequest, 
     console.log('Documents being processed:', documents)
     console.log('Files received:', Object.keys(files || {}))
     
-    // Add file paths to validated data
+    // Add file paths and ownership to validated data
     const vehicleData = {
       ...validatedData,
+      createdById: req.user!.id,
       insuranceDocument,
       registrationDocument,
       documents: documents.length > 0 ? documents : undefined
@@ -396,6 +409,10 @@ router.put('/:id', authenticate, uploadVehicleDocuments, async (req: AuthRequest
         success: false,
         message: 'Vehicle not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && existingVehicle.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     // Merge existing documents with new ones
@@ -628,6 +645,10 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
       })
     }
 
+    if (!canSeeAllData(req.user!.role) && existingVehicle.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
+    }
+
     if (existingVehicle._count.orders > 0) {
       return res.status(400).json({
         success: false,
@@ -669,7 +690,7 @@ router.delete('/:id/documents/:documentIndex', authenticate, async (req: AuthReq
 
     const vehicle = await prisma.vehicle.findUnique({
       where: { id },
-      select: { documents: true }
+      select: { documents: true, createdById: true }
     })
 
     if (!vehicle) {
@@ -677,6 +698,10 @@ router.delete('/:id/documents/:documentIndex', authenticate, async (req: AuthReq
         success: false,
         message: 'Vehicle not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && vehicle.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     let documents: any[] = []

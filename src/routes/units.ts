@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
+import { authenticate, AuthRequest } from '../middleware/auth'
+import { canSeeAllData } from '../utils/dataAccess'
 
 const router = Router()
 const prisma = new PrismaClient()
@@ -32,7 +34,7 @@ const updateUnitSchema = z.object({
 })
 
 // Get all units with pagination and search
-router.get('/', async (req, res) => {
+router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1
     const limit = parseInt(req.query.limit as string) || 10
@@ -43,6 +45,9 @@ router.get('/', async (req, res) => {
 
     const where: any = {
       isActive: true
+    }
+    if (!canSeeAllData(req.user!.role)) {
+      where.vehicle = { createdById: req.user!.id }
     }
 
     if (search) {
@@ -112,7 +117,7 @@ router.get('/', async (req, res) => {
 })
 
 // Get unit by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
 
@@ -141,6 +146,10 @@ router.get('/:id', async (req, res) => {
       })
     }
 
+    if (!canSeeAllData(req.user!.role) && unit.vehicle.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
+    }
+
     res.json({
       success: true,
       data: unit
@@ -158,11 +167,11 @@ router.get('/:id', async (req, res) => {
 })
 
 // Create new unit
-router.post('/', async (req, res) => {
+router.post('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const data = createUnitSchema.parse(req.body)
 
-    // Check if vehicle exists
+    // Check if vehicle exists and user owns it
     const vehicle = await prisma.vehicle.findUnique({
       where: { id: data.vehicleId }
     })
@@ -172,6 +181,10 @@ router.post('/', async (req, res) => {
         success: false,
         message: 'Vehicle not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && vehicle.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     // Check if unit already exists for this vehicle
@@ -229,13 +242,14 @@ router.post('/', async (req, res) => {
 })
 
 // Update unit
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
     const data = updateUnitSchema.parse(req.body)
 
     const unit = await prisma.unit.findUnique({
-      where: { id }
+      where: { id },
+      include: { vehicle: { select: { createdById: true } } }
     })
 
     if (!unit) {
@@ -243,6 +257,10 @@ router.put('/:id', async (req, res) => {
         success: false,
         message: 'Unit not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && unit.vehicle.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     const updatedUnit = await prisma.unit.update({
@@ -289,12 +307,13 @@ router.put('/:id', async (req, res) => {
 })
 
 // Delete unit
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
 
     const unit = await prisma.unit.findUnique({
-      where: { id }
+      where: { id },
+      include: { vehicle: { select: { createdById: true } } }
     })
 
     if (!unit) {
@@ -302,6 +321,10 @@ router.delete('/:id', async (req, res) => {
         success: false,
         message: 'Unit not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && unit.vehicle.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     await prisma.unit.update({

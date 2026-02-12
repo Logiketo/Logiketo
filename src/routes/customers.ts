@@ -2,6 +2,7 @@ import express from 'express'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import { authenticate, AuthRequest } from '../middleware/auth'
+import { canSeeAllData } from '../utils/dataAccess'
 
 const router = express.Router()
 const prisma = new PrismaClient()
@@ -21,20 +22,27 @@ const createCustomerSchema = z.object({
 const updateCustomerSchema = createCustomerSchema.partial()
 
 // Get all customers
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const { page = '1', limit = '10', search = '' } = req.query
     const pageNum = parseInt(page as string)
     const limitNum = parseInt(limit as string)
     const skip = (pageNum - 1) * limitNum
 
-    const where = search ? {
-      OR: [
-        { name: { contains: search as string, mode: 'insensitive' as const } },
-        { email: { contains: search as string, mode: 'insensitive' as const } },
-        { phone: { contains: search as string, mode: 'insensitive' as const } }
-      ]
-    } : {}
+    let where: any = {}
+    if (!canSeeAllData(req.user!.role)) {
+      where.createdById = req.user!.id
+    }
+    if (search) {
+      const searchOr = {
+        OR: [
+          { name: { contains: search as string, mode: 'insensitive' as const } },
+          { email: { contains: search as string, mode: 'insensitive' as const } },
+          { phone: { contains: search as string, mode: 'insensitive' as const } }
+        ]
+      }
+      where = Object.keys(where).length > 0 ? { AND: [where, searchOr] } : searchOr
+    }
 
     const [customers, total] = await Promise.all([
       prisma.customer.findMany({
@@ -81,7 +89,7 @@ router.get('/', authenticate, async (req, res) => {
 })
 
 // Get customer by ID
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
 
@@ -114,6 +122,10 @@ router.get('/:id', authenticate, async (req, res) => {
         success: false,
         message: 'Customer not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && customer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     res.json({
@@ -192,6 +204,10 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
       })
     }
 
+    if (!canSeeAllData(req.user!.role) && existingCustomer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
+    }
+
     const customer = await prisma.customer.update({
       where: { id },
       data: validatedData,
@@ -250,6 +266,10 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
         success: false,
         message: 'Customer not found'
       })
+    }
+
+    if (!canSeeAllData(req.user!.role) && existingCustomer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     if (existingCustomer._count.orders > 0) {
