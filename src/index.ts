@@ -28,7 +28,7 @@ const app = express()
 const server = createServer(app)
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || ['http://localhost:5173', 'https://www.logiketo.com', 'https://logiketo.com'],
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     methods: ['GET', 'POST']
   }
 })
@@ -45,23 +45,26 @@ const limiter = rateLimit({
 // Trust proxy for Railway
 app.set('trust proxy', 1)
 
+// CORS first - before other middleware that could block preflight
+const corsOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:5173',
+  'http://localhost:5174',
+  'https://www.logiketo.com',
+  'https://logiketo.com',
+  'https://logiketo.vercel.app'
+]
+app.use(cors({
+  origin: corsOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}))
+
 // Middleware
 app.use(helmet())
 app.use(compression())
 app.use(morgan('combined'))
 app.use(limiter)
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'https://www.logiketo.com',
-  'https://logiketo.com',
-  'https://logiketo.vercel.app'
-].filter(Boolean)
-app.use(cors({
-  origin: allowedOrigins.length ? allowedOrigins : ['http://localhost:5173'],
-  credentials: true
-}))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
