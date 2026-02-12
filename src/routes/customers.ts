@@ -140,7 +140,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       data: {
         ...validatedData,
         createdById: req.user!.id
-      },
+      } as any,
       include: {
         createdBy: {
           select: {

@@ -306,7 +306,7 @@ router.post('/', authenticate, uploadVehicleDocuments, async (req: AuthRequest, 
     }
 
     const vehicle = await prisma.vehicle.create({
-      data: vehicleData,
+      data: vehicleData as any,
       include: {
         driver: {
           select: {

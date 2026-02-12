@@ -144,7 +144,7 @@ router.post('/', authenticate, async (req, res) => {
     }
 
     const employee = await prisma.employee.create({
-      data: validatedData
+      data: validatedData as any
     })
 
     return res.status(201).json({

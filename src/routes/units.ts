@@ -187,7 +187,7 @@ router.post('/', async (req, res) => {
     }
 
     const unit = await prisma.unit.create({
-      data,
+      data: data as any,
       include: {
         vehicle: {
           include: {

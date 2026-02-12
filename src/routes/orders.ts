@@ -548,11 +548,11 @@ router.post('/', authenticate, uploadOrderDocuments, async (req: AuthRequest, re
       data: {
         ...validatedData,
         orderNumber,
-        status: 'ASSIGNED', // Set status to ASSIGNED for new orders
+        status: 'ASSIGNED' as const,
         pickupDate: new Date(validatedData.pickupDate),
         deliveryDate: validatedData.deliveryDate ? new Date(validatedData.deliveryDate) : null,
         documents: documents.length > 0 ? documents : undefined
-      },
+      } as any,
       include: {
         customer: {
           select: {
