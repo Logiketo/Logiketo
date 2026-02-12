@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react'
 import { User, Camera, Phone, Mail, MapPin, Save, Eye, EyeOff } from 'lucide-react'
 import api from '@/services/api'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function Settings() {
+  const { user } = useAuth()
+  const storageKey = user ? `logiketo-profile-${user.id}` : 'logiketo-profile-guest'
+  const passwordKey = user ? `logiketo-password-${user.id}` : 'logiketo-password-guest'
+
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   
   const [profileData, setProfileData] = useState({
-    firstName: 'Davit',
-    lastName: 'Gordeladze',
-    email: 'davit.gordeladze@logiketo.com',
-    phone: '+1 (555) 123-4567',
-    address: '123 Main Street, New York, NY 10001',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
     profilePicture: null as string | null
   })
 
@@ -69,8 +74,8 @@ export default function Settings() {
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Save profile data to localStorage (including base64 image)
-    localStorage.setItem('logiketo-profile', JSON.stringify(profileData))
+    // Save profile data to localStorage (per-user)
+    localStorage.setItem(storageKey, JSON.stringify(profileData))
     
     console.log('Profile saved successfully:', profileData)
     alert('Profile saved successfully! Your changes have been saved.')
@@ -121,11 +126,11 @@ export default function Settings() {
       const result = response.data
       
       if (result.success) {
-        // Save timestamp to localStorage for display
+        // Save timestamp to localStorage for display (per-user)
         const passwordDataToSave = {
           lastChanged: new Date().toISOString()
         }
-        localStorage.setItem('logiketo-password', JSON.stringify(passwordDataToSave))
+        localStorage.setItem(passwordKey, JSON.stringify(passwordDataToSave))
         setLastPasswordChange(passwordDataToSave.lastChanged)
         
         alert('Password changed successfully!')
@@ -145,20 +150,30 @@ export default function Settings() {
     }
   }
 
-  // Load saved profile data on component mount
+  // Load saved profile and password data (per-user) when user changes
   useEffect(() => {
-    const savedProfile = localStorage.getItem('logiketo-profile')
+    const savedProfile = localStorage.getItem(storageKey)
     if (savedProfile) {
       try {
         const parsedProfile = JSON.parse(savedProfile)
         setProfileData(parsedProfile)
       } catch (error) {
         console.error('Error loading saved profile:', error)
+        setProfileData({ firstName: '', lastName: '', email: '', phone: '', address: '', profilePicture: null })
       }
+    } else {
+      // Blank profile for new user, pre-fill email from auth
+      setProfileData({
+        firstName: '',
+        lastName: '',
+        email: user?.email || '',
+        phone: '',
+        address: '',
+        profilePicture: null
+      })
     }
     
-    // Load saved password data
-    const savedPassword = localStorage.getItem('logiketo-password')
+    const savedPassword = localStorage.getItem(passwordKey)
     if (savedPassword) {
       try {
         const parsedPassword = JSON.parse(savedPassword)
@@ -166,8 +181,10 @@ export default function Settings() {
       } catch (error) {
         console.error('Error loading saved password data:', error)
       }
+    } else {
+      setLastPasswordChange(null)
     }
-  }, [])
+  }, [storageKey, passwordKey, user?.email])
 
   // No cleanup needed for base64 strings
 

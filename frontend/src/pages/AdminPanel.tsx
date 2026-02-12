@@ -419,14 +419,17 @@ export default function AdminPanel() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New Password (leave blank to keep)</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  Passwords are stored securely (hashed) and cannot be viewed. You can set a new password for this user below.
+                </p>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Set New Password (leave blank to keep current)</label>
                 <input
                   type="password"
                   value={editForm.newPassword}
                   onChange={(e) => setEditForm({ ...editForm, newPassword: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   minLength={6}
-                  placeholder="Leave blank to keep current"
+                  placeholder="Enter new password or leave blank"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
