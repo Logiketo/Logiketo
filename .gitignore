@@ -96,3 +96,8 @@ uploads/
 # Database
 *.db
 *.sqlite
+
+# Temp/backup files (can have invalid encoding)
+temp_orders_backup.ts
+temp_*.ts
+temp_*.prisma

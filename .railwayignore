@@ -1,2 +1,7 @@
 # Force Railway to rebuild from scratch
 # This file forces Railway to clear cache and rebuild
+
+# Exclude temp/backup files with invalid encoding (UTF-16)
+temp_orders_backup.ts
+temp_*.ts
+temp_*.prisma
