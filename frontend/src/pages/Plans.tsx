@@ -6,6 +6,7 @@ import {
   Trash2, 
   Calendar
 } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
 
 interface Todo {
   id: string
@@ -17,61 +18,34 @@ interface Todo {
 }
 
 export default function Plans() {
-  
-  // Load todos from localStorage or use default
-  const [todos, setTodos] = useState<Todo[]>(() => {
-    const savedTodos = localStorage.getItem('logiketo-todos')
+  const { user } = useAuth()
+  const storageKey = user ? `logiketo-todos-${user.id}` : 'logiketo-todos-guest'
+
+  const [todos, setTodos] = useState<Todo[]>([])
+
+  // Reload todos when user changes (e.g. login/logout)
+  useEffect(() => {
+    const savedTodos = localStorage.getItem(storageKey)
     if (savedTodos) {
-      return JSON.parse(savedTodos)
-    }
-    return [
-      {
-        id: '1',
-        task: 'Implement advanced analytics dashboard',
-        timeFrame: 'this_week',
-        completed: false,
-        createdAt: '2024-01-15'
-      },
-      {
-        id: '2',
-        task: 'Develop mobile app for drivers',
-        timeFrame: 'this_month',
-        completed: false,
-        createdAt: '2024-01-10'
-      },
-      {
-        id: '3',
-        task: 'Optimize database performance',
-        timeFrame: 'today',
-        completed: true,
-        createdAt: '2024-01-05'
-      },
-      {
-        id: '4',
-        task: 'Add email notifications system',
-        timeFrame: 'this_month',
-        completed: false,
-        createdAt: '2024-01-12'
-      },
-      {
-        id: '5',
-        task: 'Implement API rate limiting',
-        timeFrame: 'this_week',
-        completed: false,
-        createdAt: '2024-01-08'
+      try {
+        setTodos(JSON.parse(savedTodos))
+      } catch {
+        setTodos([])
       }
-    ]
-  })
+    } else {
+      setTodos([])
+    }
+  }, [storageKey])
 
   const [showForm, setShowForm] = useState(false)
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [filterTimeFrame, setFilterTimeFrame] = useState<string>('all')
   const [filterCompleted, setFilterCompleted] = useState<string>('pending')
 
-  // Save todos to localStorage whenever they change
+  // Save todos to localStorage (per-user) whenever they change
   useEffect(() => {
-    localStorage.setItem('logiketo-todos', JSON.stringify(todos))
-  }, [todos])
+    localStorage.setItem(storageKey, JSON.stringify(todos))
+  }, [todos, storageKey])
 
   const timeFrameLabels = {
     today: 'Today',
