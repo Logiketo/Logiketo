@@ -19,9 +19,9 @@ END $$;
 -- Make createdById required for employees
 ALTER TABLE "employees" ALTER COLUMN "createdById" SET NOT NULL;
 
--- Drop old unique indexes on employees
-DROP INDEX IF EXISTS "employees_employeeId_key";
-DROP INDEX IF EXISTS "employees_email_key";
+-- Drop old unique constraints on employees (PostgreSQL UNIQUE creates constraint, not standalone index)
+ALTER TABLE "employees" DROP CONSTRAINT IF EXISTS "employees_employeeId_key";
+ALTER TABLE "employees" DROP CONSTRAINT IF EXISTS "employees_email_key";
 
 -- Add compound unique constraints for employees
 CREATE UNIQUE INDEX "employees_employeeId_createdById_key" ON "employees"("employeeId", "createdById");
