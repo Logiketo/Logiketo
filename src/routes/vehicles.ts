@@ -3,7 +3,6 @@ import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import { authenticate, AuthRequest } from '../middleware/auth'
 import { uploadVehicleDocuments } from '../middleware/upload'
-import { canSeeAllData } from '../utils/dataAccess'
 
 const router = express.Router()
 const prisma = new PrismaClient()
@@ -44,31 +43,30 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
     const limitNum = parseInt(limit as string)
     const skip = (pageNum - 1) * limitNum
 
-    const where: any = {}
-    if (!canSeeAllData(req.user!.role)) {
-      where.createdById = req.user!.id
-    }
+    // All accounts are 100% separated - every user sees only their own account's vehicles
+    const where: any = { createdById: req.user!.id }
     if (search) {
-      const searchOr = {
-        OR: [
-          { make: { contains: search as string, mode: 'insensitive' as const } },
-          { model: { contains: search as string, mode: 'insensitive' as const } },
-          { licensePlate: { contains: search as string, mode: 'insensitive' as const } },
-          { vin: { contains: search as string, mode: 'insensitive' as const } },
-          { unitNumber: { contains: search as string, mode: 'insensitive' as const } },
-          { driverName: { contains: search as string, mode: 'insensitive' as const } },
-          { 
-            driver: {
-              OR: [
-                { firstName: { contains: search as string, mode: 'insensitive' as const } },
-                { lastName: { contains: search as string, mode: 'insensitive' as const } }
-              ]
+      where.AND = [
+        { createdById: req.user!.id },
+        {
+          OR: [
+            { make: { contains: search as string, mode: 'insensitive' as const } },
+            { model: { contains: search as string, mode: 'insensitive' as const } },
+            { licensePlate: { contains: search as string, mode: 'insensitive' as const } },
+            { vin: { contains: search as string, mode: 'insensitive' as const } },
+            { unitNumber: { contains: search as string, mode: 'insensitive' as const } },
+            { driverName: { contains: search as string, mode: 'insensitive' as const } },
+            { 
+              driver: {
+                OR: [
+                  { firstName: { contains: search as string, mode: 'insensitive' as const } },
+                  { lastName: { contains: search as string, mode: 'insensitive' as const } }
+                ]
+              }
             }
-          }
-        ]
-      }
-      where.AND = Object.keys(where).length > 0 ? [where, searchOr] : [searchOr]
-      if (where.createdById) delete where.createdById
+          ]
+        }
+      ]
     }
 
     if (status) {
@@ -205,7 +203,8 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       })
     }
 
-    if (!canSeeAllData(req.user!.role) && vehicle.createdById !== req.user!.id) {
+    // Ownership check - accounts are 100% separated
+    if (vehicle.createdById !== req.user!.id) {
       return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
@@ -411,7 +410,8 @@ router.put('/:id', authenticate, uploadVehicleDocuments, async (req: AuthRequest
       })
     }
 
-    if (!canSeeAllData(req.user!.role) && existingVehicle.createdById !== req.user!.id) {
+    // Ownership check - accounts are 100% separated
+    if (existingVehicle.createdById !== req.user!.id) {
       return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
@@ -645,7 +645,8 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
       })
     }
 
-    if (!canSeeAllData(req.user!.role) && existingVehicle.createdById !== req.user!.id) {
+    // Ownership check - accounts are 100% separated
+    if (existingVehicle.createdById !== req.user!.id) {
       return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
@@ -700,7 +701,8 @@ router.delete('/:id/documents/:documentIndex', authenticate, async (req: AuthReq
       })
     }
 
-    if (!canSeeAllData(req.user!.role) && vehicle.createdById !== req.user!.id) {
+    // Ownership check - accounts are 100% separated
+    if (vehicle.createdById !== req.user!.id) {
       return res.status(403).json({ success: false, message: 'Access denied' })
     }
 

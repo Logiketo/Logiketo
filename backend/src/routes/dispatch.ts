@@ -1,6 +1,6 @@
 import express from 'express'
 import { PrismaClient } from '@prisma/client'
-import { authenticate } from '../middleware/auth'
+import { authenticate, AuthRequest } from '../middleware/auth'
 import { z } from 'zod'
 
 const router = express.Router()
@@ -24,7 +24,7 @@ const updateDispatchStatusSchema = z.object({
 })
 
 // Get dispatch dashboard data
-router.get('/dashboard', authenticate, async (req, res) => {
+router.get('/dashboard', authenticate, async (req: AuthRequest, res) => {
   try {
     // Use raw SQL queries to avoid enum type issues
     const [
@@ -130,11 +130,12 @@ router.get('/dashboard', authenticate, async (req, res) => {
         ORDER BY o."updatedAt" DESC
       `) as unknown as Promise<any[]>,
 
-      // Available vehicles
+      // Available vehicles - filtered by account ownership
       prisma.vehicle.findMany({
         where: { 
           status: 'AVAILABLE',
-          driver: { isNot: null }
+          driver: { isNot: null },
+          createdById: req.user!.id
         },
         include: { driver: true },
         orderBy: { updatedAt: 'desc' }
@@ -594,9 +595,10 @@ router.get('/track/:orderId', authenticate, async (req, res) => {
 })
 
 // Get available vehicles for dispatch
-router.get('/vehicles/available', authenticate, async (req, res) => {
+router.get('/vehicles/available', authenticate, async (req: AuthRequest, res) => {
   try {
-    // Use raw SQL to avoid enum issues with orders.status
+    const userId = req.user!.id.replace(/'/g, "''")
+    // Use raw SQL to avoid enum issues with orders.status - filter by account ownership
     const vehiclesRaw = await prisma.$queryRawUnsafe(`
       SELECT 
         v.*,
@@ -628,6 +630,7 @@ router.get('/vehicles/available', authenticate, async (req, res) => {
       LEFT JOIN users u ON v."driverId" = u.id
       WHERE CAST(v.status AS TEXT) = 'AVAILABLE'
         AND v."driverId" IS NOT NULL
+        AND v."createdById" = '${userId}'
       ORDER BY v."updatedAt" DESC
     `) as unknown as any[]
 

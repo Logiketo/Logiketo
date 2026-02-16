@@ -526,9 +526,10 @@ router.get('/new-items', authenticate, async (req: AuthRequest, res) => {
       take: limit
     })
 
-    // Get new vehicles
+    // Get new vehicles - filtered by account ownership
     const newVehicles = await prisma.vehicle.findMany({
       where: {
+        createdById: req.user!.id,
         createdAt: {
           gte: start,
           lte: end
@@ -584,6 +585,7 @@ router.get('/new-items', authenticate, async (req: AuthRequest, res) => {
       }),
       prisma.vehicle.count({
         where: {
+          createdById: req.user!.id,
           createdAt: {
             gte: start,
             lte: end
@@ -649,7 +651,7 @@ router.get('/analytics', authenticate, async (req: AuthRequest, res) => {
       prisma.customer.count(),
       prisma.employee.count(),
       prisma.user.count({ where: { role: 'DRIVER' } }),
-      prisma.vehicle.count(),
+      prisma.vehicle.count({ where: { createdById: req.user!.id } }),
       prisma.unit.count(),
       // Use raw SQL to avoid enum type issues
       (async () => {

@@ -23,9 +23,10 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  orders    Order[]
-  vehicles  Vehicle[]
-  customers Customer[]
+  orders         Order[]
+  vehicles       Vehicle[]
+  customers      Customer[]
+  vehiclesOwned  Vehicle[] @relation("VehicleOwner")
 
   @@map("users")
 }
@@ -66,6 +67,7 @@ model Vehicle {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   driverId    String?
+  createdById String?     // User/account who owns this vehicle (for multi-tenant isolation)
   
   // New fields for enhanced vehicle information
   unitNumber  String?     // Custom unit number
@@ -79,9 +81,10 @@ model Vehicle {
   documents Json?             // Array of document objects with name, path, uploadDate
 
   // Relations
-  driver User?   @relation(fields: [driverId], references: [id])
-  orders Order[]
-  unit   Unit?
+  driver    User?   @relation(fields: [driverId], references: [id])
+  createdBy User?   @relation("VehicleOwner", fields: [createdById], references: [id])
+  orders    Order[]
+  unit      Unit?
 
   @@map("vehicles")
 }
