@@ -1,6 +1,7 @@
 /**
- * Admin/staff see all data. Regular users see only data they created (ownership).
+ * All accounts are 100% separated - every user sees only their own account's data.
+ * No role (including ADMIN) sees data from other accounts.
  */
-export function canSeeAllData(role: string): boolean {
-  return ['ADMIN', 'MANAGER', 'DISPATCHER'].includes(role)
+export function canSeeAllData(_role: string): boolean {
+  return false
 }

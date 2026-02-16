@@ -686,10 +686,10 @@ router.get('/analytics', authenticate, async (req: AuthRequest, res) => {
         ? prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM orders`).then((r: any) => r[0].count)
         : prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM orders o LEFT JOIN customers c ON o."customerId" = c.id WHERE 1=1${of}`).then((r: any) => r[0].count),
       canSeeAllData(req.user!.role) ? prisma.customer.count() : prisma.customer.count({ where: { createdById: req.user!.id } }),
-      canSeeAllData(req.user!.role) ? prisma.employee.count() : Promise.resolve(0),
-      canSeeAllData(req.user!.role) ? prisma.user.count({ where: { role: 'DRIVER' } }) : Promise.resolve(0),
-      canSeeAllData(req.user!.role) ? prisma.vehicle.count() : Promise.resolve(0),
-      canSeeAllData(req.user!.role) ? prisma.unit.count() : Promise.resolve(0),
+      canSeeAllData(req.user!.role) ? prisma.employee.count() : prisma.employee.count({ where: { createdById: req.user!.id } }),
+      canSeeAllData(req.user!.role) ? prisma.user.count({ where: { role: 'DRIVER' } }) : prisma.employee.count({ where: { createdById: req.user!.id, position: { contains: 'driver', mode: 'insensitive' } } }),
+      canSeeAllData(req.user!.role) ? prisma.vehicle.count() : prisma.vehicle.count({ where: { createdById: req.user!.id } }),
+      canSeeAllData(req.user!.role) ? prisma.unit.count() : prisma.unit.count({ where: { vehicle: { createdById: req.user!.id } } }),
       // Use raw SQL to avoid enum type issues
       (async () => {
         const result = await prisma.$queryRawUnsafe(`
