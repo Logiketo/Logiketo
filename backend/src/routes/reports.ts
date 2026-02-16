@@ -56,8 +56,9 @@ router.get('/loads', authenticate, async (req: AuthRequest, res) => {
   try {
     const { period, startDate, endDate, limit } = reportQuerySchema.parse(req.query)
     const { start, end } = getDateRange(period, startDate, endDate)
+    const userId = req.user!.id.replace(/'/g, "''")
 
-    // Use raw SQL to avoid enum type issues
+    // Use raw SQL to avoid enum type issues - filter by account ownership (via customer)
     const loadsDataRaw = await prisma.$queryRawUnsafe(`
       SELECT
         o.id,
@@ -104,6 +105,7 @@ router.get('/loads', authenticate, async (req: AuthRequest, res) => {
       LEFT JOIN vehicles v ON o."vehicleId" = v.id
       WHERE o."createdAt" >= '${start.toISOString()}'
         AND o."createdAt" <= '${end.toISOString()}'
+        AND c."createdById" = '${userId}'
       ORDER BY o."createdAt" DESC
     `) as any[]
     
@@ -177,6 +179,7 @@ router.get('/top-customers', authenticate, async (req: AuthRequest, res) => {
     const { start, end } = getDateRange(period, startDate, endDate)
 
     const customerStats = await prisma.customer.findMany({
+      where: { createdById: req.user!.id },
       include: {
         orders: {
           where: {
@@ -244,8 +247,9 @@ router.get('/top-employees', authenticate, async (req: AuthRequest, res) => {
     const { period, startDate, endDate, limit } = reportQuerySchema.parse(req.query)
     const { start, end } = getDateRange(period, startDate, endDate)
 
-    // Get all employees
+    // Get all employees - filtered by account ownership
     const employees = await prisma.employee.findMany({
+      where: { createdById: req.user!.id },
       select: {
         id: true,
         employeeId: true,
@@ -257,20 +261,22 @@ router.get('/top-employees', authenticate, async (req: AuthRequest, res) => {
       }
     })
 
-    // Get orders for the period with employee information
-    // Use raw SQL to avoid enum type issues
+    // Get orders for the period with employee information - filter by account ownership (via customer)
+    const userId = req.user!.id.replace(/'/g, "''")
     const ordersRaw = await prisma.$queryRawUnsafe(`
       SELECT
-        id,
-        "employeeId",
-        "loadPay",
-        "driverPay",
-        CAST(status AS TEXT) as status,
-        "createdAt"
-      FROM orders
-      WHERE "createdAt" >= '${start.toISOString()}'
-        AND "createdAt" <= '${end.toISOString()}'
-        AND "employeeId" IS NOT NULL
+        o.id,
+        o."employeeId",
+        o."loadPay",
+        o."driverPay",
+        CAST(o.status AS TEXT) as status,
+        o."createdAt"
+      FROM orders o
+      JOIN customers c ON o."customerId" = c.id
+      WHERE o."createdAt" >= '${start.toISOString()}'
+        AND o."createdAt" <= '${end.toISOString()}'
+        AND o."employeeId" IS NOT NULL
+        AND c."createdById" = '${userId}'
     `) as any[]
     
     const orders = ordersRaw.map((row: any) => ({
@@ -344,8 +350,9 @@ router.get('/top-units', authenticate, async (req: AuthRequest, res) => {
     const { period, startDate, endDate, limit } = reportQuerySchema.parse(req.query)
     const { start, end } = getDateRange(period, startDate, endDate)
 
-    // Get all units with their vehicles
+    // Get all units with their vehicles - filtered by account ownership (via vehicle)
     const units = await prisma.unit.findMany({
+      where: { vehicle: { createdById: req.user!.id } },
       include: {
         vehicle: {
           select: {
@@ -359,8 +366,8 @@ router.get('/top-units', authenticate, async (req: AuthRequest, res) => {
       }
     })
 
-    // Get orders for the period with vehicle information
-    // Use raw SQL to avoid enum type issues
+    // Get orders for the period with vehicle information - filter by account ownership (via customer)
+    const userId = req.user!.id.replace(/'/g, "''")
     const ordersRaw = await prisma.$queryRawUnsafe(`
       SELECT
         o.id,
@@ -377,10 +384,12 @@ router.get('/top-units', authenticate, async (req: AuthRequest, res) => {
           'licensePlate', v."licensePlate"
         ) as vehicle
       FROM orders o
+      LEFT JOIN customers c ON o."customerId" = c.id
       LEFT JOIN vehicles v ON o."vehicleId" = v.id
       WHERE o."createdAt" >= '${start.toISOString()}'
         AND o."createdAt" <= '${end.toISOString()}'
         AND o."vehicleId" IS NOT NULL
+        AND c."createdById" = '${userId}'
     `) as any[]
     
     const orders = ordersRaw.map((row: any) => ({
@@ -457,9 +466,10 @@ router.get('/new-items', authenticate, async (req: AuthRequest, res) => {
     const { period, startDate, endDate, limit } = reportQuerySchema.parse(req.query)
     const { start, end } = getDateRange(period, startDate, endDate)
 
-    // Get new units
+    // Get new units - filtered by account ownership (via vehicle)
     const newUnits = await prisma.unit.findMany({
       where: {
+        vehicle: { createdById: req.user!.id },
         createdAt: {
           gte: start,
           lte: end
@@ -483,9 +493,10 @@ router.get('/new-items', authenticate, async (req: AuthRequest, res) => {
       take: limit
     })
 
-    // Get new customers
+    // Get new customers - filtered by account ownership
     const newCustomers = await prisma.customer.findMany({
       where: {
+        createdById: req.user!.id,
         createdAt: {
           gte: start,
           lte: end
@@ -503,9 +514,10 @@ router.get('/new-items', authenticate, async (req: AuthRequest, res) => {
       take: limit
     })
 
-    // Get new employees
+    // Get new employees - filtered by account ownership
     const newEmployees = await prisma.employee.findMany({
       where: {
+        createdById: req.user!.id,
         createdAt: {
           gte: start,
           lte: end
@@ -561,6 +573,7 @@ router.get('/new-items', authenticate, async (req: AuthRequest, res) => {
     ] = await Promise.all([
       prisma.unit.count({
         where: {
+          vehicle: { createdById: req.user!.id },
           createdAt: {
             gte: start,
             lte: end
@@ -569,6 +582,7 @@ router.get('/new-items', authenticate, async (req: AuthRequest, res) => {
       }),
       prisma.customer.count({
         where: {
+          createdById: req.user!.id,
           createdAt: {
             gte: start,
             lte: end
@@ -577,6 +591,7 @@ router.get('/new-items', authenticate, async (req: AuthRequest, res) => {
       }),
       prisma.employee.count({
         where: {
+          createdById: req.user!.id,
           createdAt: {
             gte: start,
             lte: end
@@ -634,8 +649,9 @@ router.get('/analytics', authenticate, async (req: AuthRequest, res) => {
   try {
     const { period, startDate, endDate } = reportQuerySchema.parse(req.query)
     const { start, end } = getDateRange(period, startDate, endDate)
+    const userId = req.user!.id.replace(/'/g, "''")
 
-    // Get all analytics data in parallel
+    // Get all analytics data in parallel - filter by account ownership
     const [
       totalOrders,
       totalCustomers,
@@ -647,23 +663,29 @@ router.get('/analytics', authenticate, async (req: AuthRequest, res) => {
       revenueData,
       statusBreakdown
     ] = await Promise.all([
-      prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM orders`).then((r: any) => r[0].count),
-      prisma.customer.count(),
-      prisma.employee.count(),
+      prisma.$queryRawUnsafe(`
+        SELECT COUNT(*)::int as count FROM orders o
+        JOIN customers c ON o."customerId" = c.id
+        WHERE c."createdById" = '${userId}'
+      `).then((r: any) => r[0].count),
+      prisma.customer.count({ where: { createdById: req.user!.id } }),
+      prisma.employee.count({ where: { createdById: req.user!.id } }),
       prisma.user.count({ where: { role: 'DRIVER' } }),
       prisma.vehicle.count({ where: { createdById: req.user!.id } }),
-      prisma.unit.count(),
-      // Use raw SQL to avoid enum type issues
+      prisma.unit.count({ where: { vehicle: { createdById: req.user!.id } } }),
+      // Use raw SQL to avoid enum type issues - filter by customer ownership
       (async () => {
         const result = await prisma.$queryRawUnsafe(`
           SELECT
-            "loadPay",
-            "driverPay",
-            CAST(status AS TEXT) as status,
-            "createdAt"
-          FROM orders
-          WHERE "createdAt" >= '${start.toISOString()}'
-            AND "createdAt" <= '${end.toISOString()}'
+            o."loadPay",
+            o."driverPay",
+            CAST(o.status AS TEXT) as status,
+            o."createdAt"
+          FROM orders o
+          JOIN customers c ON o."customerId" = c.id
+          WHERE o."createdAt" >= '${start.toISOString()}'
+            AND o."createdAt" <= '${end.toISOString()}'
+            AND c."createdById" = '${userId}'
         `) as any[]
         return result.map((row: any) => ({
           loadPay: row.loadPay ? parseFloat(row.loadPay) : null,
@@ -672,15 +694,17 @@ router.get('/analytics', authenticate, async (req: AuthRequest, res) => {
           createdAt: row.createdAt
         }))
       })(),
-      // Use raw SQL to avoid enum type issues
+      // Use raw SQL to avoid enum type issues - filter by customer ownership
       (async () => {
         const result = await prisma.$queryRawUnsafe(`
           SELECT
-            COALESCE(SUM("loadPay"), 0) as loadPay,
-            COALESCE(SUM("driverPay"), 0) as driverPay
-          FROM orders
-          WHERE "createdAt" >= '${start.toISOString()}'
-            AND "createdAt" <= '${end.toISOString()}'
+            COALESCE(SUM(o."loadPay"), 0) as loadPay,
+            COALESCE(SUM(o."driverPay"), 0) as driverPay
+          FROM orders o
+          JOIN customers c ON o."customerId" = c.id
+          WHERE o."createdAt" >= '${start.toISOString()}'
+            AND o."createdAt" <= '${end.toISOString()}'
+            AND c."createdById" = '${userId}'
         `) as any[]
         return {
           _sum: {
@@ -689,16 +713,18 @@ router.get('/analytics', authenticate, async (req: AuthRequest, res) => {
           }
         }
       })(),
-      // Use raw SQL to avoid enum issues with groupBy
+      // Use raw SQL to avoid enum issues with groupBy - filter by customer ownership
       (async () => {
         const result = await prisma.$queryRawUnsafe(`
           SELECT 
-            CAST(status AS TEXT) as status,
+            CAST(o.status AS TEXT) as status,
             COUNT(*)::int as count
-          FROM orders
-          WHERE "createdAt" >= '${start.toISOString()}'
-            AND "createdAt" <= '${end.toISOString()}'
-          GROUP BY status
+          FROM orders o
+          JOIN customers c ON o."customerId" = c.id
+          WHERE o."createdAt" >= '${start.toISOString()}'
+            AND o."createdAt" <= '${end.toISOString()}'
+            AND c."createdById" = '${userId}'
+          GROUP BY o.status
         `) as any[]
         return result.map((row: any) => ({
           status: row.status,

@@ -87,8 +87,8 @@ const generateOrderNumber = async (): Promise<string> => {
   return `ORD-${Date.now()}`
 }
 
-// Get all orders
-router.get('/', authenticate, async (req, res) => {
+// Get all orders - filtered by account ownership (orders via customer.createdById)
+router.get('/', authenticate, async (req: AuthRequest, res) => {
   console.log('=== ORDERS ENDPOINT HIT ===')
   console.log('Request query:', req.query)
   console.log('Request headers:', req.headers)
@@ -122,8 +122,9 @@ router.get('/', authenticate, async (req, res) => {
     try {
       console.log('Attempting raw SQL query with params:', { limitNum, skip })
       
-      // Build WHERE clause for raw SQL
-      let whereConditions: string[] = []
+      // Build WHERE clause for raw SQL - always filter by account ownership (via customer)
+      const userId = String(req.user!.id).replace(/'/g, "''")
+      let whereConditions: string[] = [`c."createdById" = '${userId}'`]
       
       // Search filter (multiple fields)
       if (search) {
@@ -180,7 +181,7 @@ router.get('/', authenticate, async (req, res) => {
         whereConditions.push(`o."vehicleId" = '${String(vehicleId).replace(/'/g, "''")}'`)
       }
       
-      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
+      const whereClause = `WHERE ${whereConditions.join(' AND ')}`
       
       console.log('Raw SQL WHERE clause:', whereClause)
       
@@ -421,7 +422,7 @@ router.get('/', authenticate, async (req, res) => {
 })
 
 // Get order by ID
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
 
@@ -437,7 +438,8 @@ router.get('/:id', authenticate, async (req, res) => {
             city: true,
             state: true,
             zipCode: true,
-            country: true
+            country: true,
+            createdById: true
           }
         },
         vehicle: {
@@ -471,6 +473,11 @@ router.get('/:id', authenticate, async (req, res) => {
         success: false,
         message: 'Order not found'
       })
+    }
+
+    // Ownership check - orders via customer.createdById
+    if (order.customer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     // Debug logging for single order
@@ -562,6 +569,11 @@ router.post('/', authenticate, uploadOrderDocuments, async (req: AuthRequest, re
       })
     }
 
+    // Ownership check - customer must belong to this account
+    if (customer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
+    }
+
     // Check if vehicle exists and is available (if provided)
     if (validatedData.vehicleId) {
       const vehicle = await prisma.vehicle.findUnique({
@@ -580,6 +592,11 @@ router.post('/', authenticate, uploadOrderDocuments, async (req: AuthRequest, re
           success: false,
           message: 'Vehicle is not available'
         })
+      }
+
+      // Ownership check - vehicle must belong to this account
+      if (vehicle.createdById !== req.user!.id) {
+        return res.status(403).json({ success: false, message: 'Access denied' })
       }
     }
 
@@ -716,7 +733,8 @@ router.put('/:id', authenticate, uploadOrderDocuments, async (req: AuthRequest, 
     }
     
     const existingOrder = await prisma.order.findUnique({
-      where: { id }
+      where: { id },
+      include: { customer: { select: { createdById: true } } }
     })
 
     if (!existingOrder) {
@@ -724,6 +742,11 @@ router.put('/:id', authenticate, uploadOrderDocuments, async (req: AuthRequest, 
         success: false,
         message: 'Order not found'
       })
+    }
+
+    // Ownership check - orders via customer.createdById
+    if (existingOrder.customer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     // Handle existing document notes updates
@@ -744,7 +767,7 @@ router.put('/:id', authenticate, uploadOrderDocuments, async (req: AuthRequest, 
     console.log('Update Order - Files received:', Object.keys(files || {}))
     console.log('Update Order - Existing documents with notes:', existingDocuments)
 
-    // Check if customer exists (if being updated)
+    // Check if customer exists and belongs to account (if being updated)
     if (validatedData.customerId && validatedData.customerId !== existingOrder.customerId) {
       const customer = await prisma.customer.findUnique({
         where: { id: validatedData.customerId }
@@ -755,6 +778,9 @@ router.put('/:id', authenticate, uploadOrderDocuments, async (req: AuthRequest, 
           success: false,
           message: 'Customer not found'
         })
+      }
+      if (customer.createdById !== req.user!.id) {
+        return res.status(403).json({ success: false, message: 'Access denied' })
       }
     }
 
@@ -776,6 +802,9 @@ router.put('/:id', authenticate, uploadOrderDocuments, async (req: AuthRequest, 
           success: false,
           message: 'Vehicle is not available'
         })
+      }
+      if (vehicle.createdById !== req.user!.id) {
+        return res.status(403).json({ success: false, message: 'Access denied' })
       }
     }
 
@@ -987,7 +1016,8 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
     const { id } = req.params
 
     const existingOrder = await prisma.order.findUnique({
-      where: { id }
+      where: { id },
+      include: { customer: { select: { createdById: true } } }
     })
 
     if (!existingOrder) {
@@ -995,6 +1025,11 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
         success: false,
         message: 'Order not found'
       })
+    }
+
+    // Ownership check - orders via customer.createdById
+    if (existingOrder.customer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     // Only allow deletion of pending orders
@@ -1045,7 +1080,7 @@ router.delete('/:id/documents/:documentIndex', authenticate, async (req: AuthReq
 
     const order = await prisma.order.findUnique({
       where: { id },
-      select: { documents: true }
+      select: { documents: true, customer: { select: { createdById: true } } }
     })
 
     if (!order) {
@@ -1053,6 +1088,11 @@ router.delete('/:id/documents/:documentIndex', authenticate, async (req: AuthReq
         success: false,
         message: 'Order not found'
       })
+    }
+
+    // Ownership check - orders via customer.createdById
+    if (order.customer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     let documents: any[] = []

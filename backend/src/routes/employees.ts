@@ -1,10 +1,15 @@
 import express from 'express'
 import { PrismaClient } from '@prisma/client'
-import { authenticate } from '../middleware/auth'
+import { authenticate, AuthRequest } from '../middleware/auth'
 import { z } from 'zod'
 
 const router = express.Router()
 const prisma = new PrismaClient()
+
+// All accounts are 100% separated - every user sees only their own account's data
+function employeeOwnershipFilter(userId: string) {
+  return { createdById: userId }
+}
 
 // Validation schemas
 const createEmployeeSchema = z.object({
@@ -24,8 +29,8 @@ const createEmployeeSchema = z.object({
 
 const updateEmployeeSchema = createEmployeeSchema.partial().omit({ employeeId: true })
 
-// Get all employees with pagination, search, and filtering
-router.get('/', authenticate, async (req, res) => {
+// Get all employees with pagination, search, and filtering - filtered by account ownership
+router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1
     const limit = parseInt(req.query.limit as string) || 10
@@ -35,16 +40,20 @@ router.get('/', authenticate, async (req, res) => {
 
     const skip = (page - 1) * limit
 
-    // Build where clause
-    const where: any = {}
+    // Build where clause - always filter by account ownership
+    const where: any = { ...employeeOwnershipFilter(req.user!.id) }
     
     if (search) {
-      where.OR = [
-        { firstName: { contains: search, mode: 'insensitive' as const } },
-        { lastName: { contains: search, mode: 'insensitive' as const } },
-        { email: { contains: search, mode: 'insensitive' as const } },
-        { employeeId: { contains: search, mode: 'insensitive' as const } },
-        { position: { contains: search, mode: 'insensitive' as const } }
+      where.AND = [
+        {
+          OR: [
+            { firstName: { contains: search, mode: 'insensitive' as const } },
+            { lastName: { contains: search, mode: 'insensitive' as const } },
+            { email: { contains: search, mode: 'insensitive' as const } },
+            { employeeId: { contains: search, mode: 'insensitive' as const } },
+            { position: { contains: search, mode: 'insensitive' as const } }
+          ]
+        }
       ]
     }
 
@@ -86,7 +95,7 @@ router.get('/', authenticate, async (req, res) => {
 })
 
 // Get employee by ID
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
 
@@ -99,6 +108,11 @@ router.get('/:id', authenticate, async (req, res) => {
         success: false,
         message: 'Employee not found'
       })
+    }
+
+    // Ownership check - accounts are 100% separated
+    if (employee.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     return res.json({
@@ -115,13 +129,13 @@ router.get('/:id', authenticate, async (req, res) => {
 })
 
 // Create new employee
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const validatedData = createEmployeeSchema.parse(req.body)
 
-    // Check if employee ID already exists
+    // Check if employee ID already exists (within this account)
     const existingEmployeeId = await prisma.employee.findUnique({
-      where: { employeeId: validatedData.employeeId }
+      where: { employeeId_createdById: { employeeId: validatedData.employeeId, createdById: req.user!.id } }
     })
 
     if (existingEmployeeId) {
@@ -131,9 +145,9 @@ router.post('/', authenticate, async (req, res) => {
       })
     }
 
-    // Check if email already exists
+    // Check if email already exists (within this account)
     const existingEmail = await prisma.employee.findUnique({
-      where: { email: validatedData.email }
+      where: { email_createdById: { email: validatedData.email, createdById: req.user!.id } }
     })
 
     if (existingEmail) {
@@ -144,7 +158,7 @@ router.post('/', authenticate, async (req, res) => {
     }
 
     const employee = await prisma.employee.create({
-      data: validatedData
+      data: { ...validatedData, createdById: req.user!.id }
     })
 
     return res.status(201).json({
@@ -170,7 +184,7 @@ router.post('/', authenticate, async (req, res) => {
 })
 
 // Update employee
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
     const validatedData = updateEmployeeSchema.parse(req.body)
@@ -187,10 +201,15 @@ router.put('/:id', authenticate, async (req, res) => {
       })
     }
 
-    // Check if email is being updated and already exists
+    // Ownership check - accounts are 100% separated
+    if (existingEmployee.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
+    }
+
+    // Check if email is being updated and already exists (within this account)
     if (validatedData.email && validatedData.email !== existingEmployee.email) {
       const emailExists = await prisma.employee.findUnique({
-        where: { email: validatedData.email }
+        where: { email_createdById: { email: validatedData.email, createdById: req.user!.id } }
       })
 
       if (emailExists) {
@@ -229,7 +248,7 @@ router.put('/:id', authenticate, async (req, res) => {
 })
 
 // Update employee status
-router.patch('/:id/status', authenticate, async (req, res) => {
+router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
     const { status } = req.body
@@ -239,6 +258,14 @@ router.patch('/:id/status', authenticate, async (req, res) => {
         success: false,
         message: 'Invalid status'
       })
+    }
+
+    const existingEmployee = await prisma.employee.findUnique({
+      where: { id },
+      select: { createdById: true }
+    })
+    if (!existingEmployee || existingEmployee.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     const employee = await prisma.employee.update({
@@ -261,7 +288,7 @@ router.patch('/:id/status', authenticate, async (req, res) => {
 })
 
 // Delete employee
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
 
@@ -274,6 +301,11 @@ router.delete('/:id', authenticate, async (req, res) => {
         success: false,
         message: 'Employee not found'
       })
+    }
+
+    // Ownership check - accounts are 100% separated
+    if (employee.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     await prisma.employee.delete({

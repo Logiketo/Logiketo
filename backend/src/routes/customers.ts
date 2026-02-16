@@ -20,21 +20,26 @@ const createCustomerSchema = z.object({
 
 const updateCustomerSchema = createCustomerSchema.partial()
 
-// Get all customers
-router.get('/', authenticate, async (req, res) => {
+// Get all customers - filtered by account ownership (100% separation)
+router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const { page = '1', limit = '10', search = '' } = req.query
     const pageNum = parseInt(page as string)
     const limitNum = parseInt(limit as string)
     const skip = (pageNum - 1) * limitNum
 
-    const where = search ? {
-      OR: [
-        { name: { contains: search as string, mode: 'insensitive' as const } },
-        { email: { contains: search as string, mode: 'insensitive' as const } },
-        { phone: { contains: search as string, mode: 'insensitive' as const } }
+    const where: any = { createdById: req.user!.id }
+    if (search) {
+      where.AND = [
+        {
+          OR: [
+            { name: { contains: search as string, mode: 'insensitive' as const } },
+            { email: { contains: search as string, mode: 'insensitive' as const } },
+            { phone: { contains: search as string, mode: 'insensitive' as const } }
+          ]
+        }
       ]
-    } : {}
+    }
 
     const [customers, total] = await Promise.all([
       prisma.customer.findMany({
@@ -81,7 +86,7 @@ router.get('/', authenticate, async (req, res) => {
 })
 
 // Get customer by ID
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params
 
@@ -114,6 +119,11 @@ router.get('/:id', authenticate, async (req, res) => {
         success: false,
         message: 'Customer not found'
       })
+    }
+
+    // Ownership check - accounts are 100% separated
+    if (customer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     res.json({
@@ -192,6 +202,11 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
       })
     }
 
+    // Ownership check - accounts are 100% separated
+    if (existingCustomer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
+    }
+
     const customer = await prisma.customer.update({
       where: { id },
       data: validatedData,
@@ -250,6 +265,11 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
         success: false,
         message: 'Customer not found'
       })
+    }
+
+    // Ownership check - accounts are 100% separated
+    if (existingCustomer.createdById !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
     if (existingCustomer._count.orders > 0) {

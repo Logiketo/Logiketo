@@ -27,6 +27,7 @@ model User {
   vehicles       Vehicle[]
   customers      Customer[]
   vehiclesOwned  Vehicle[] @relation("VehicleOwner")
+  employees      Employee[]
 
   @@map("users")
 }
@@ -142,10 +143,10 @@ model TrackingEvent {
 
 model Employee {
   id          String        @id @default(cuid())
-  employeeId  String        @unique
+  employeeId  String
   firstName   String
   lastName    String
-  email       String        @unique
+  email       String
   phone       String?
   position    String
   department  String?
@@ -156,7 +157,13 @@ model Employee {
   emergencyContact String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  createdById String        // User/account who owns this employee (for multi-tenant isolation)
 
+  // Relations
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  @@unique([employeeId, createdById])
+  @@unique([email, createdById])
   @@map("employees")
 }
 
