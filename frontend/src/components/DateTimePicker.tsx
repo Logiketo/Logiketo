@@ -250,7 +250,13 @@ export function DateTimePicker({
           </div>
 
           {showTimePopover && (
-            <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 min-w-[140px]">
+            <div
+              className="absolute top-full left-0 mt-1 z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 min-w-[140px]"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
+            >
               {timeStep === 'hour' ? (
                 <>
                   <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Select hour</div>
