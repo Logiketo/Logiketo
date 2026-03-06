@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Calendar, Clock, ChevronUp, ChevronDown, X } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -79,9 +80,11 @@ export function DateTimePicker({
     return t ? t.substring(0, 5) : ''
   })
   const [showTimePopover, setShowTimePopover] = useState(false)
-  const [timeStep, setTimeStep] = useState<'hour' | 'minute'>('hour') // Step 1: hours only, Step 2: minutes only
-  const [tempSelectedHour, setTempSelectedHour] = useState<string>('00') // Hour chosen in step 1, before minute
+  const [timeStep, setTimeStep] = useState<'hour' | 'minute'>('hour')
+  const [tempSelectedHour, setTempSelectedHour] = useState<string>('00')
+  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 })
   const timePopoverRef = useRef<HTMLDivElement>(null)
+  const timeWrapperRef = useRef<HTMLDivElement>(null)
   const timeInputRef = useRef<HTMLInputElement>(null)
 
   // Sync from external value
@@ -98,7 +101,10 @@ export function DateTimePicker({
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (timePopoverRef.current && !timePopoverRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      const inPopover = timePopoverRef.current?.contains(target)
+      const inTimeWrapper = timeWrapperRef.current?.contains(target)
+      if (!inPopover && !inTimeWrapper) {
         setShowTimePopover(false)
         setTimeStep('hour')
       }
@@ -193,9 +199,9 @@ export function DateTimePicker({
           {required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
       )}
-      <div className="flex gap-2 items-stretch">
-        {/* Date - use native date input but show MM/dd/yy in a text overlay for display, or use text input */}
-        <div className="flex-1 relative">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
+        {/* Date */}
+        <div className="flex-1 min-w-0 relative">
           <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
           <input
             type="date"
@@ -209,7 +215,7 @@ export function DateTimePicker({
         </div>
 
         {/* Time - editable input + popover with hour/minute grids */}
-        <div className="relative w-28 flex-shrink-0" ref={timePopoverRef}>
+        <div ref={timeWrapperRef} className="relative w-full sm:w-28 flex-shrink-0">
           <div className="relative flex items-stretch">
             <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
             <input
@@ -220,6 +226,11 @@ export function DateTimePicker({
               onBlur={handleTimeInputBlur}
               onFocus={() => {
                 if (!disabled) {
+                  // Position popover relative to input (for portal)
+                  if (timeInputRef.current) {
+                    const rect = timeInputRef.current.getBoundingClientRect()
+                    setPopoverPos({ top: rect.bottom + 4, left: rect.left })
+                  }
                   setShowTimePopover(true)
                   setTimeStep('hour')
                   setTempSelectedHour(timePart ? timePart.split(':')[0] || '00' : '00')
@@ -249,15 +260,18 @@ export function DateTimePicker({
             </div>
           </div>
 
-          {showTimePopover && (
-            <div
-              className="absolute top-full left-0 mt-1 z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 min-w-[140px]"
-              onMouseDown={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-              }}
-            >
-              {timeStep === 'hour' ? (
+          {showTimePopover && typeof document !== 'undefined' &&
+            createPortal(
+              <div
+                ref={timePopoverRef}
+                className="fixed z-[99999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl p-3 min-w-[140px]"
+                style={{ top: popoverPos.top, left: popoverPos.left }}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                }}
+              >
+                {timeStep === 'hour' ? (
                 <>
                   <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Select hour</div>
                   <div className="grid grid-cols-4 gap-1">
@@ -303,8 +317,9 @@ export function DateTimePicker({
                   </div>
                 </>
               )}
-            </div>
-          )}
+              </div>,
+              document.body
+            )}
         </div>
 
         {optional && value && (

@@ -580,8 +580,8 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
               </div>
             </div>
 
-            {/* Dates */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Dates - full width so date+time are always visible */}
+            <div className="space-y-4">
               <Controller
                 name="pickupDate"
                 control={control}
@@ -595,7 +595,6 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
                   />
                 )}
               />
-
               <Controller
                 name="deliveryDate"
                 control={control}
