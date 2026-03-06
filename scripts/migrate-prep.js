@@ -5,14 +5,18 @@
  */
 const { execSync } = require('child_process');
 
-const FAILED_MIGRATION = '20250212100000_add_ownership_created_by_id';
+const FAILED_MIGRATIONS = [
+  '20250212100000_add_ownership_created_by_id',
+  '20250306000000_vehicle_license_vin_per_user',
+];
 
-try {
-  execSync(`npx prisma migrate resolve --rolled-back "${FAILED_MIGRATION}"`, {
-    stdio: 'pipe',
-  });
-  console.log(`  ✓ Marked ${FAILED_MIGRATION} as rolled back (will retry)`);
-} catch (err) {
-  // Ignore - migration might not be in failed state
-  console.log('  (no failed migration to resolve, continuing)');
+for (const name of FAILED_MIGRATIONS) {
+  try {
+    execSync(`npx prisma migrate resolve --rolled-back "${name}"`, {
+      stdio: 'pipe',
+    });
+    console.log(`  ✓ Marked ${name} as rolled back (will retry)`);
+  } catch (err) {
+    // Ignore - migration might not be in failed state
+  }
 }
