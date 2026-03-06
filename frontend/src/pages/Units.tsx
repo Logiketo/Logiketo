@@ -115,8 +115,8 @@ function UnitEditForm({ unit, onClose, onSuccess }: UnitEditFormProps) {
 
   const updateMutation = useMutation({
     mutationFn: (data: UnitEditData) => unitService.updateUnit(unit.id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['units'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['units'] })
       onSuccess()
     },
     onError: (error: any) => {

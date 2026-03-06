@@ -63,8 +63,8 @@ function CustomerForm({ customer, onClose, onSuccess }: CustomerFormProps) {
 
   const createMutation = useMutation({
     mutationFn: customerService.createCustomer,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['customers'] })
       onSuccess()
     },
     onError: (error: any) => {
@@ -75,8 +75,8 @@ function CustomerForm({ customer, onClose, onSuccess }: CustomerFormProps) {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: CreateCustomerData }) =>
       customerService.updateCustomer(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['customers'] })
       onSuccess()
     },
     onError: (error: any) => {
@@ -86,8 +86,8 @@ function CustomerForm({ customer, onClose, onSuccess }: CustomerFormProps) {
 
   const deleteMutation = useMutation({
     mutationFn: customerService.deleteCustomer,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['customers'] })
       onSuccess()
     },
     onError: (error: any) => {

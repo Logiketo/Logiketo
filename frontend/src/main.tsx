@@ -10,7 +10,7 @@ import './index.css'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 0, // Always refetch after mutations (invalidation) so new data shows immediately
       retry: 1,
     },
   },

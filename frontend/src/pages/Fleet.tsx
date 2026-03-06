@@ -176,9 +176,10 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
 
   const createMutation = useMutation({
     mutationFn: vehicleService.createVehicle,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('Vehicle created successfully:', data)
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] })
+      await queryClient.refetchQueries({ queryKey: ['vehicles'] })
+      await queryClient.refetchQueries({ queryKey: ['units'] })
       toast.success('Vehicle created successfully!')
       onSuccess()
     },
@@ -192,9 +193,9 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: CreateVehicleData | FormData }) =>
       vehicleService.updateVehicle(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] })
-      queryClient.invalidateQueries({ queryKey: ['units'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['vehicles'] })
+      await queryClient.refetchQueries({ queryKey: ['units'] })
       onSuccess()
     },
     onError: (error: any) => {
@@ -205,8 +206,9 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       vehicleService.updateVehicleStatus(id, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['vehicles'] })
+      await queryClient.refetchQueries({ queryKey: ['units'] })
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update vehicle status')
@@ -215,8 +217,9 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
 
   const deleteMutation = useMutation({
     mutationFn: vehicleService.deleteVehicle,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['vehicles'] })
+      await queryClient.refetchQueries({ queryKey: ['units'] })
       onSuccess()
     },
     onError: (error: any) => {
@@ -227,11 +230,10 @@ function VehicleForm({ vehicle, onClose, onSuccess }: VehicleFormProps) {
   const deleteDocumentMutation = useMutation({
     mutationFn: ({ vehicleId, documentIndex }: { vehicleId: string; documentIndex: number }) => 
       vehicleService.deleteDocument(vehicleId, documentIndex),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] })
-      // Refresh the vehicle data to update the documents list
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['vehicles'] })
       if (vehicle) {
-        queryClient.invalidateQueries({ queryKey: ['vehicle', vehicle.id] })
+        await queryClient.refetchQueries({ queryKey: ['vehicle', vehicle.id] })
       }
     },
     onError: (error: any) => {

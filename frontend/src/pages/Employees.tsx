@@ -74,8 +74,8 @@ function EmployeeForm({ employee, onClose, onSuccess }: EmployeeFormProps) {
 
   const createMutation = useMutation({
     mutationFn: employeeService.createEmployee,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['employees'] })
       onSuccess()
     },
     onError: (error: any) => {
@@ -97,8 +97,8 @@ function EmployeeForm({ employee, onClose, onSuccess }: EmployeeFormProps) {
 
   const deleteMutation = useMutation({
     mutationFn: employeeService.deleteEmployee,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['employees'] })
       onSuccess()
     },
     onError: (error: any) => {

@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
   Truck, 
   LogOut, 
@@ -88,6 +88,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
+  const queryClient = useQueryClient()
 
   // Fetch all orders to calculate sidebar counts
   const { data: allOrdersData } = useQuery({
@@ -319,13 +320,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   {currentSidebarNav.map((item) => {
                     const isActive = location.pathname + location.search === item.href
                     
-                    // Special handling for Units - make it clickable to refresh
+                    // Special handling for Units - click to refetch data
                     if (item.name === 'Units' && isActive) {
                       return (
                         <button
                           key={item.name}
                           onClick={() => {
-                            window.location.reload()
+                            queryClient.refetchQueries({ queryKey: ['units'] })
                             setSidebarOpen(false)
                           }}
                           className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left cursor-pointer ${
@@ -333,7 +334,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                               ? 'bg-blue-600 text-white hover:bg-blue-700' 
                               : 'bg-primary-100 text-primary-900 hover:bg-primary-200'
                           }`}
-                          title="Click to refresh the page"
+                          title="Click to refresh units"
                         >
                           <item.icon className="mr-3 h-5 w-5" />
                           {item.name}
@@ -398,18 +399,18 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   {currentSidebarNav.map((item) => {
                     const isActive = location.pathname + location.search === item.href
                     
-                    // Special handling for Units - make it clickable to refresh
+                    // Special handling for Units - click to refetch data
                     if (item.name === 'Units' && isActive) {
                       return (
                         <button
                           key={item.name}
-                          onClick={() => window.location.reload()}
+                          onClick={() => queryClient.refetchQueries({ queryKey: ['units'] })}
                           className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left cursor-pointer ${
                             isDarkMode 
                               ? 'bg-blue-600 text-white hover:bg-blue-700' 
                               : 'bg-primary-100 text-primary-900 hover:bg-primary-200'
                           }`}
-                          title="Click to refresh the page"
+                          title="Click to refresh units"
                         >
                           <item.icon className="mr-3 h-5 w-5" />
                           {item.name}

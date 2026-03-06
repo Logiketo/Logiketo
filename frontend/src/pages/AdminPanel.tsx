@@ -111,8 +111,8 @@ export default function AdminPanel() {
 
   const createMutation = useMutation({
     mutationFn: createUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allUsers'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['allUsers'] })
       toast.success('User created successfully')
       setShowCreateModal(false)
       setCreateForm({ email: '', password: '', firstName: '', lastName: '', role: 'USER' })
@@ -124,8 +124,8 @@ export default function AdminPanel() {
 
   const updateMutation = useMutation({
     mutationFn: ({ userId, data }: { userId: string; data: any }) => updateUser(userId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allUsers'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['allUsers'] })
       toast.success('User updated successfully')
       setEditingUser(null)
     },
@@ -136,8 +136,8 @@ export default function AdminPanel() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allUsers'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['allUsers'] })
       toast.success('User deleted permanently')
       setEditingUser(null)
     },

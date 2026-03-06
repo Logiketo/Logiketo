@@ -276,8 +276,9 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
 
   const createMutation = useMutation({
     mutationFn: (data: FormData) => orderService.createOrder(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['orders'] })
+      await queryClient.refetchQueries({ queryKey: ['all-orders'] })
       toast.success('Order created successfully!')
       onSuccess()
     },
@@ -289,8 +290,9 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: FormData }) =>
       orderService.updateOrder(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['orders'] })
+      await queryClient.refetchQueries({ queryKey: ['all-orders'] })
       toast.success('Order updated successfully!')
       onSuccess()
     },
@@ -303,8 +305,9 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
   const deleteDocumentMutation = useMutation({
     mutationFn: ({ orderId, documentIndex }: { orderId: string; documentIndex: number }) => 
       orderService.deleteDocument(orderId, documentIndex),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['orders'] })
+      await queryClient.refetchQueries({ queryKey: ['all-orders'] })
     },
     onError: (error: any) => {
       console.error('Delete document error:', error)
@@ -951,8 +954,9 @@ export default function Orders() {
 
   const deleteMutation = useMutation({
     mutationFn: orderService.deleteOrder,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['orders'] })
+      await queryClient.refetchQueries({ queryKey: ['all-orders'] })
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to delete order')
@@ -962,8 +966,9 @@ export default function Orders() {
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       orderService.updateOrderStatus(id, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['orders'] })
+      await queryClient.refetchQueries({ queryKey: ['all-orders'] })
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update order status')
