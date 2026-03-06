@@ -79,6 +79,8 @@ export function DateTimePicker({
     return t ? t.substring(0, 5) : ''
   })
   const [showTimePopover, setShowTimePopover] = useState(false)
+  const [timeStep, setTimeStep] = useState<'hour' | 'minute'>('hour') // Step 1: hours only, Step 2: minutes only
+  const [tempSelectedHour, setTempSelectedHour] = useState<string>('00') // Hour chosen in step 1, before minute
   const timePopoverRef = useRef<HTMLDivElement>(null)
   const timeInputRef = useRef<HTMLInputElement>(null)
 
@@ -98,6 +100,7 @@ export function DateTimePicker({
     const handleClickOutside = (e: MouseEvent) => {
       if (timePopoverRef.current && !timePopoverRef.current.contains(e.target as Node)) {
         setShowTimePopover(false)
+        setTimeStep('hour')
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -139,17 +142,21 @@ export function DateTimePicker({
   }
 
   const handleHourSelect = (h: string) => {
-    const m = timePart ? timePart.split(':')[1] || '00' : '00'
-    const formatted = `${h}:${m}`
-    setTimePart(formatted)
-    if (datePart) onChange(`${datePart}T${formatted}`)
+    setTempSelectedHour(h)
+    setTimeStep('minute') // Move to minute selection - don't close
   }
 
   const handleMinuteSelect = (m: string) => {
-    const h = timePart ? timePart.split(':')[0] || '00' : '00'
+    const h = tempSelectedHour
     const formatted = `${h}:${m}`
     setTimePart(formatted)
     if (datePart) onChange(`${datePart}T${formatted}`)
+    setShowTimePopover(false) // Close after full selection
+    setTimeStep('hour') // Reset for next time
+  }
+
+  const handleBackToHours = () => {
+    setTimeStep('hour')
   }
 
   const incrementHour = () => {
@@ -211,7 +218,13 @@ export function DateTimePicker({
               value={timePart}
               onChange={handleTimeInputChange}
               onBlur={handleTimeInputBlur}
-              onFocus={() => !disabled && setShowTimePopover(true)}
+              onFocus={() => {
+                if (!disabled) {
+                  setShowTimePopover(true)
+                  setTimeStep('hour')
+                  setTempSelectedHour(timePart ? timePart.split(':')[0] || '00' : '00')
+                }
+              }}
               disabled={disabled}
               placeholder="HH:MM"
               className={`${baseInputClass} ${errorClass} pl-10 pr-8`}
@@ -237,18 +250,17 @@ export function DateTimePicker({
           </div>
 
           {showTimePopover && (
-            <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 min-w-[200px]">
-              <div className="grid grid-cols-2 gap-4">
-                {/* Hour grid */}
-                <div>
-                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Hour</div>
+            <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 min-w-[140px]">
+              {timeStep === 'hour' ? (
+                <>
+                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Select hour</div>
                   <div className="grid grid-cols-4 gap-1">
                     {HOUR_OPTIONS.map((h) => (
                       <button
                         key={h}
                         type="button"
                         onClick={() => handleHourSelect(h)}
-                        className={`px-2 py-1.5 text-sm rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 ${
+                        className={`px-2 py-2 text-sm rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 ${
                           currentHour === h ? 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 font-medium' : ''
                         }`}
                       >
@@ -256,17 +268,26 @@ export function DateTimePicker({
                       </button>
                     ))}
                   </div>
-                </div>
-                {/* Minute grid */}
-                <div>
-                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Minute</div>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleBackToHours}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline mb-2"
+                  >
+                    ← Back to hours
+                  </button>
+                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    Minute (hour: {tempSelectedHour})
+                  </div>
                   <div className="grid grid-cols-4 gap-1">
                     {MINUTE_OPTIONS.map((m) => (
                       <button
                         key={m}
                         type="button"
                         onClick={() => handleMinuteSelect(m)}
-                        className={`px-2 py-1.5 text-sm rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 ${
+                        className={`px-2 py-2 text-sm rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 ${
                           currentMinuteRounded === m ? 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 font-medium' : ''
                         }`}
                       >
@@ -274,8 +295,8 @@ export function DateTimePicker({
                       </button>
                     ))}
                   </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
           )}
         </div>
