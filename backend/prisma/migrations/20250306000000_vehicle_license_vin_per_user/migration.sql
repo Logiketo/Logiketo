@@ -1,6 +1,6 @@
--- Drop global unique constraints on licensePlate and vin
-DROP INDEX IF EXISTS "vehicles_licensePlate_key";
-DROP INDEX IF EXISTS "vehicles_vin_key";
+-- Drop global unique constraints on licensePlate and vin (use DROP CONSTRAINT - indexes are created by constraints)
+ALTER TABLE "vehicles" DROP CONSTRAINT IF EXISTS "vehicles_licensePlate_key";
+ALTER TABLE "vehicles" DROP CONSTRAINT IF EXISTS "vehicles_vin_key";
 
 -- Normalize empty VIN to NULL (avoid unique violation when multiple vehicles have empty VIN per user)
 UPDATE vehicles SET "vin" = NULL WHERE "vin" = '' OR TRIM("vin") = '';
