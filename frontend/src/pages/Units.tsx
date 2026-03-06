@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Truck, Search, Filter, Edit, Save, X, MapPin, Clock, FileText, Loader2 } from 'lucide-react'
-import { DateTimePicker } from '@/components/DateTimePicker'
 import { unitService, Unit } from '@/services/unitService'
 import { distanceService, DistanceResult } from '@/services/distanceService'
 import { geocodeZipCode, formatLocationFromGeocoding, isValidZipCode } from '@/utils/geocoding'
@@ -62,7 +61,6 @@ function UnitEditForm({ unit, onClose, onSuccess }: UnitEditFormProps) {
 
   const {
     register,
-    control,
     handleSubmit,
     watch,
     setValue,
@@ -223,17 +221,14 @@ function UnitEditForm({ unit, onClose, onSuccess }: UnitEditFormProps) {
                 </div>
 
                 <div>
-                  <Controller
-                    name="availableTime"
-                    control={control}
-                    render={({ field }) => (
-                      <DateTimePicker
-                        label="Available Time"
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        optional
-                      />
-                    )}
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <Clock className="h-4 w-4 inline mr-1" />
+                    Available Time
+                  </label>
+                  <input
+                    {...register('availableTime')}
+                    type="datetime-local"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                   />
                 </div>
               </div>
