@@ -59,8 +59,8 @@ model Vehicle {
   make        String
   model       String
   year        Int
-  licensePlate String     @unique
-  vin         String?     @unique
+  licensePlate String
+  vin         String?
   color       String?
   capacity    Float?      // in tons or cubic meters
   status      VehicleStatus @default(AVAILABLE)
@@ -87,6 +87,8 @@ model Vehicle {
   orders    Order[]
   unit      Unit?
 
+  @@unique([licensePlate, createdById])
+  @@unique([vin, createdById])
   @@map("vehicles")
 }
 

@@ -259,18 +259,25 @@ router.post('/', authenticate, uploadVehicleDocuments, async (req: AuthRequest, 
     console.log('Documents being processed:', documents)
     console.log('Files received:', Object.keys(files || {}))
     
+    // Normalize empty VIN to null (per-user unique constraint allows multiple nulls)
+    const vinToCheck = validatedData.vin?.trim() || undefined
+
     // Add file paths and ownership to validated data (for account isolation)
     const vehicleData = {
       ...validatedData,
       createdById: req.user!.id,
+      vin: vinToCheck ?? null,
       insuranceDocument,
       registrationDocument,
       documents: documents.length > 0 ? documents : undefined
     }
 
-    // Check if license plate already exists
-    const existingVehicle = await prisma.vehicle.findUnique({
-      where: { licensePlate: validatedData.licensePlate }
+    // Check if license plate already exists for this user's fleet only
+    const existingVehicle = await prisma.vehicle.findFirst({
+      where: {
+        licensePlate: validatedData.licensePlate,
+        createdById: req.user!.id
+      }
     })
 
     if (existingVehicle) {
@@ -280,10 +287,13 @@ router.post('/', authenticate, uploadVehicleDocuments, async (req: AuthRequest, 
       })
     }
 
-    // Check if VIN already exists (if provided)
-    if (validatedData.vin) {
-      const existingVin = await prisma.vehicle.findUnique({
-        where: { vin: validatedData.vin }
+    // Check if VIN already exists for this user's fleet only (if provided)
+    if (vinToCheck) {
+      const existingVin = await prisma.vehicle.findFirst({
+        where: {
+          vin: vinToCheck,
+          createdById: req.user!.id
+        }
       })
 
       if (existingVin) {
@@ -307,10 +317,11 @@ router.post('/', authenticate, uploadVehicleDocuments, async (req: AuthRequest, 
         })
       }
 
-      // Check if driver is already assigned to another vehicle
+      // Check if driver is already assigned to another vehicle (within this user's fleet only)
       const existingDriverVehicle = await prisma.vehicle.findFirst({
         where: { 
           driverId: validatedData.driverId,
+          createdById: req.user!.id,
           status: { not: 'OUT_OF_SERVICE' }
         }
       })
@@ -430,18 +441,25 @@ router.put('/:id', authenticate, uploadVehicleDocuments, async (req: AuthRequest
       finalDocuments = [...finalDocuments, ...documents]
     }
 
+    // Normalize empty VIN to null when updating
+    const vinToCheck = validatedData.vin?.trim() || undefined
+
     // Add file paths to validated data if files were uploaded, otherwise preserve existing
     const updateData = {
       ...validatedData,
+      ...(validatedData.vin !== undefined && { vin: vinToCheck ?? null }),
       ...(insuranceDocument && { insuranceDocument }),
       ...(registrationDocument && { registrationDocument }),
       ...(finalDocuments.length > 0 && { documents: finalDocuments })
     }
 
-    // Check if license plate already exists (if being updated)
+    // Check if license plate already exists for this user's fleet only (if being updated)
     if (validatedData.licensePlate && validatedData.licensePlate !== existingVehicle.licensePlate) {
-      const existingLicensePlate = await prisma.vehicle.findUnique({
-        where: { licensePlate: validatedData.licensePlate }
+      const existingLicensePlate = await prisma.vehicle.findFirst({
+        where: {
+          licensePlate: validatedData.licensePlate,
+          createdById: req.user!.id
+        }
       })
 
       if (existingLicensePlate) {
@@ -452,10 +470,14 @@ router.put('/:id', authenticate, uploadVehicleDocuments, async (req: AuthRequest
       }
     }
 
-    // Check if VIN already exists (if being updated)
-    if (validatedData.vin && validatedData.vin !== existingVehicle.vin) {
-      const existingVin = await prisma.vehicle.findUnique({
-        where: { vin: validatedData.vin }
+    // Check if VIN already exists for this user's fleet only (if being updated)
+    const vinToCheck = validatedData.vin?.trim() || undefined
+    if (vinToCheck && vinToCheck !== (existingVehicle.vin || null)) {
+      const existingVin = await prisma.vehicle.findFirst({
+        where: {
+          vin: vinToCheck,
+          createdById: req.user!.id
+        }
       })
 
       if (existingVin) {
@@ -479,10 +501,11 @@ router.put('/:id', authenticate, uploadVehicleDocuments, async (req: AuthRequest
         })
       }
 
-      // Check if driver is already assigned to another vehicle
+      // Check if driver is already assigned to another vehicle (within this user's fleet only)
       const existingDriverVehicle = await prisma.vehicle.findFirst({
         where: { 
           driverId: validatedData.driverId,
+          createdById: req.user!.id,
           status: { not: 'OUT_OF_SERVICE' },
           id: { not: id }
         }
