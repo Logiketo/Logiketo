@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { 
@@ -25,6 +25,7 @@ import { employeeService, Employee, PaginatedResponse } from '@/services/employe
 import { getFileUrl } from '@/services/api'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
+import { DateTimePicker } from '@/components/DateTimePicker'
 
 interface Document {
   id: string
@@ -177,6 +178,7 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
     setValue,
@@ -580,30 +582,32 @@ function OrderForm({ order, onClose, onSuccess }: OrderFormProps) {
 
             {/* Dates */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Pickup Date & Time *
-                </label>
-                <input
-                  {...register('pickupDate')}
-                  type="datetime-local"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                />
-                {errors.pickupDate && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.pickupDate.message}</p>
+              <Controller
+                name="pickupDate"
+                control={control}
+                render={({ field }) => (
+                  <DateTimePicker
+                    label="Pickup Date & Time"
+                    value={field.value}
+                    onChange={field.onChange}
+                    required
+                    error={errors.pickupDate?.message}
+                  />
                 )}
-              </div>
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Delivery Date & Time
-                </label>
-                <input
-                  {...register('deliveryDate')}
-                  type="datetime-local"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                />
-              </div>
+              <Controller
+                name="deliveryDate"
+                control={control}
+                render={({ field }) => (
+                  <DateTimePicker
+                    label="Delivery Date & Time"
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    optional
+                  />
+                )}
+              />
             </div>
 
             {/* Order Details */}
