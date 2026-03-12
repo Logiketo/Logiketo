@@ -165,6 +165,13 @@ router.post('/login', loginLimiter, async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as SignOptions
     )
 
+    // Record login session (when and from where)
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress || null
+    const userAgent = req.headers['user-agent'] || null
+    await prisma.loginSession.create({
+      data: { userId: user.id, ipAddress: ipAddress || undefined, userAgent: userAgent || undefined }
+    }).catch(() => {}) // Don't fail login if session recording fails
+
     // Return user data (without password)
     const { password, ...userWithoutPassword } = user
 
@@ -464,6 +471,26 @@ router.delete('/reject-user/:userId', authenticate, async (req: AuthRequest, res
       success: false,
       message: 'Internal server error'
     })
+  }
+})
+
+// Get login history (admin only)
+router.get('/login-history', authenticate, async (req: AuthRequest, res) => {
+  try {
+    if (req.user!.role !== 'ADMIN') {
+      return res.status(403).json({ success: false, message: 'Access denied. Admin role required.' })
+    }
+    const sessions = await prisma.loginSession.findMany({
+      include: {
+        user: { select: { email: true, firstName: true, lastName: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 500
+    })
+    return res.json({ success: true, data: sessions })
+  } catch (error) {
+    console.error('Login history error:', error)
+    return res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })
 

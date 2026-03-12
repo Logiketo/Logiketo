@@ -1,8 +1,18 @@
-const motivationQuotes = [
-  "When the why is clear, the how is easy"
-]
+import { useQuery } from '@tanstack/react-query'
+import api from '@/services/api'
+
+const DEFAULT_QUOTE = 'When the why is clear, the how is easy'
 
 export default function Dashboard() {
+  const { data: quoteData } = useQuery({
+    queryKey: ['motivationQuote'],
+    queryFn: async () => {
+      const res = await api.get('/content?key=motivation_quote')
+      return res.data.data?.value ?? DEFAULT_QUOTE
+    }
+  })
+  const quote = quoteData ?? DEFAULT_QUOTE
+
   return (
     <div className="min-h-screen relative">
       {/* Background Image - Truck Highway */}
@@ -30,7 +40,7 @@ export default function Dashboard() {
         <div className="text-center max-w-4xl mb-16">
           <blockquote className="text-2xl md:text-3xl lg:text-4xl text-white font-medium leading-relaxed italic">
             <span className="text-4xl md:text-5xl text-blue-300 font-bold">"</span>
-            <span className="px-2" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.9)' }}>{motivationQuotes[0]}</span>
+            <span className="px-2" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.9)' }}>{quote}</span>
             <span className="text-4xl md:text-5xl text-blue-300 font-bold">"</span>
           </blockquote>
         </div>

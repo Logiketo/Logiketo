@@ -20,6 +20,7 @@ import trackingRoutes from './routes/tracking'
 import dispatchRoutes from './routes/dispatch'
 import unitRoutes from './routes/units'
 import reportRoutes from './routes/reports'
+import contentRoutes from './routes/content'
 
 // Load environment variables
 dotenv.config()
@@ -134,6 +135,7 @@ app.use('/api/tracking', trackingRoutes)
 app.use('/api/dispatch', dispatchRoutes)
 app.use('/api/units', unitRoutes)
 app.use('/api/reports', reportRoutes)
+app.use('/api/content', contentRoutes)
 
 // Socket.io for real-time features
 io.on('connection', (socket) => {

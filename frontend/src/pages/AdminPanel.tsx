@@ -1,11 +1,20 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Users, AlertCircle, UserPlus, Pencil, Trash2, UserCheck, UserX } from 'lucide-react'
+import { Users, AlertCircle, UserPlus, Pencil, Trash2, UserCheck, UserX, History, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '@/services/api'
 
 const ROLES = ['USER', 'MANAGER', 'DISPATCHER', 'DRIVER'] as const
 const NEW_USERS_DAYS = 30
+
+interface LoginSession {
+  id: string
+  userId: string
+  ipAddress: string | null
+  userAgent: string | null
+  createdAt: string
+  user: { email: string; firstName: string; lastName: string }
+}
 
 interface User {
   id: string
@@ -37,8 +46,11 @@ const deleteUser = async (userId: string) => {
   await api.delete(`/auth/delete-user/${userId}`)
 }
 
+type MainTab = 'users' | 'login-history' | 'site-content'
+
 export default function AdminPanel() {
   const [userRole, setUserRole] = useState<string>('')
+  const [mainTab, setMainTab] = useState<MainTab>('users')
   const [activeTab, setActiveTab] = useState<'all' | 'new' | 'active' | 'paused'>('all')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
@@ -81,6 +93,71 @@ export default function AdminPanel() {
     queryFn: getAllUsers,
     enabled: userRole === 'ADMIN'
   })
+
+  const { data: loginSessions = [], isLoading: loadingLogins } = useQuery({
+    queryKey: ['loginHistory'],
+    queryFn: async () => {
+      const res = await api.get('/auth/login-history')
+      return res.data.data
+    },
+    enabled: userRole === 'ADMIN' && mainTab === 'login-history'
+  })
+
+  const { data: siteContent = {}, isLoading: loadingContent } = useQuery({
+    queryKey: ['siteContent'],
+    queryFn: async () => {
+      const res = await api.get('/content')
+      return res.data.data || {}
+    },
+    enabled: userRole === 'ADMIN' && mainTab === 'site-content'
+  })
+
+  const contentUpdateMutation = useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      await api.put('/content', { key, value })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['siteContent'] })
+      toast.success('Content saved')
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to save')
+  })
+
+  const contentBulkMutation = useMutation({
+    mutationFn: async (data: Record<string, string>) => {
+      await api.put('/content/bulk', data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['siteContent'] })
+      queryClient.invalidateQueries({ queryKey: ['aboutContent'] })
+      toast.success('About content saved')
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to save')
+  })
+
+  const [contentForm, setContentForm] = useState<Record<string, string>>({})
+
+  const contentDefaults = {
+    motivation_quote: 'When the why is clear, the how is easy',
+    about_intro: 'LogiKeto is a load management and dispatch platform built for dispatchers who need efficient operations and real-time tracking.',
+    about_p1: 'We streamline logistics with load management, dispatch tools, interactive maps, fleet management, and actionable reports. Our platform helps you add and save loads, assign drivers, track deliveries, and optimize your operations—all in one place.',
+    about_p2: 'Logiketo was created by an experienced team with real hands-on knowledge of the dispatching and logistics industry. After years of working in the field, we saw the same challenges come up again and again—too many disconnected tools, too much manual work, scattered information, and unnecessary day-to-day chaos. Logiketo was built to solve those problems with a practical platform designed around real operational needs.',
+    about_p3: 'Our goal was to bring the most important parts of a logistics business into one clear, easy-to-use system. Whether you are managing a small team or a growing fleet, Logiketo is designed to save time, keep operations organized, and help teams make faster, smarter decisions.',
+    about_p4: ''
+  }
+
+  useEffect(() => {
+    if (mainTab === 'site-content') {
+      setContentForm({
+        motivation_quote: siteContent.motivation_quote ?? contentDefaults.motivation_quote,
+        about_intro: siteContent.about_intro ?? contentDefaults.about_intro,
+        about_p1: siteContent.about_p1 ?? contentDefaults.about_p1,
+        about_p2: siteContent.about_p2 ?? contentDefaults.about_p2,
+        about_p3: siteContent.about_p3 ?? contentDefaults.about_p3,
+        about_p4: siteContent.about_p4 ?? contentDefaults.about_p4
+      })
+    }
+  }, [mainTab, siteContent])
 
   const filteredUsers = useMemo(() => {
     const now = new Date()
@@ -215,18 +292,159 @@ export default function AdminPanel() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Panel</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">Create and manage users.</p>
+          <p className="text-gray-600 dark:text-gray-300 mt-1">
+            {mainTab === 'users' && 'Create and manage users.'}
+            {mainTab === 'login-history' && 'View when and from where users logged in.'}
+            {mainTab === 'site-content' && 'Edit motivational quote and About page content.'}
+          </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-        >
-          <UserPlus className="h-5 w-5" />
-          Add New User
-        </button>
+        {mainTab === 'users' && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+          >
+            <UserPlus className="h-5 w-5" />
+            Add New User
+          </button>
+        )}
       </div>
 
-      {/* Tabs */}
+      {/* Main Tabs */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="-mb-px flex flex-wrap gap-4">
+          {[
+            { id: 'users' as const, label: 'Users', icon: Users },
+            { id: 'login-history' as const, label: 'Login History', icon: History },
+            { id: 'site-content' as const, label: 'Site Content', icon: FileText }
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setMainTab(id)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                mainTab === id
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Login History */}
+      {mainTab === 'login-history' && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          {loadingLogins ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+              <p className="mt-4 text-gray-500 dark:text-gray-400">Loading login history...</p>
+            </div>
+          ) : loginSessions.length === 0 ? (
+            <div className="text-center py-12">
+              <History className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <p className="text-gray-600 dark:text-gray-300">No login sessions recorded yet.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">User</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">When</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">IP Address</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Device/Browser</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {loginSessions.map((s: LoginSession) => (
+                    <tr key={s.id} className="bg-white dark:bg-gray-800">
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                        {s.user?.firstName} {s.user?.lastName} ({s.user?.email})
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{formatDate(s.createdAt)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 font-mono">{s.ipAddress || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate" title={s.userAgent || ''}>{s.userAgent || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Site Content */}
+      {mainTab === 'site-content' && (
+        <div className="space-y-8">
+          {loadingContent ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+              <p className="mt-4 text-gray-500 dark:text-gray-400">Loading content...</p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Motivational Quote (Dashboard)</h3>
+                <textarea
+                  value={contentForm.motivation_quote ?? ''}
+                  onChange={(e) => setContentForm({ ...contentForm, motivation_quote: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="When the why is clear, the how is easy"
+                />
+                <button
+                  onClick={() => contentUpdateMutation.mutate({ key: 'motivation_quote', value: contentForm.motivation_quote ?? '' })}
+                  disabled={contentUpdateMutation.isPending}
+                  className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                >
+                  Save Quote
+                </button>
+              </div>
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">About Page Content</h3>
+                <div className="space-y-4">
+                  {[
+                    { key: 'about_intro', label: 'Intro paragraph' },
+                    { key: 'about_p1', label: 'Paragraph 1' },
+                    { key: 'about_p2', label: 'Paragraph 2' },
+                    { key: 'about_p3', label: 'Paragraph 3' },
+                    { key: 'about_p4', label: 'Paragraph 4' }
+                  ].map(({ key, label }) => (
+                    <div key={key}>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
+                      <textarea
+                        value={contentForm[key] ?? ''}
+                        onChange={(e) => setContentForm({ ...contentForm, [key]: e.target.value })}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => contentBulkMutation.mutate({
+                      about_intro: contentForm.about_intro ?? '',
+                      about_p1: contentForm.about_p1 ?? '',
+                      about_p2: contentForm.about_p2 ?? '',
+                      about_p3: contentForm.about_p3 ?? '',
+                      about_p4: contentForm.about_p4 ?? ''
+                    })}
+                    disabled={contentBulkMutation.isPending}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                  >
+                    Save About Content
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Users: Sub-tabs and Content */}
+      {mainTab === 'users' && (
+        <>
       <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex flex-wrap gap-4">
           {[
@@ -520,6 +738,8 @@ export default function AdminPanel() {
             </form>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   )

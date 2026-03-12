@@ -28,8 +28,30 @@ model User {
   customers      Customer[]
   vehiclesOwned  Vehicle[] @relation("VehicleOwner")
   employees      Employee[]
+  loginSessions  LoginSession[]
 
   @@map("users")
+}
+
+model LoginSession {
+  id        String   @id @default(cuid())
+  userId    String
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("login_sessions")
+}
+
+model SiteContent {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("site_content")
 }
 
 model Customer {
