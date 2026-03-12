@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Truck, Package, Users, FileText, BarChart3, MapPin } from 'lucide-react'
+import PublicNavbar from '@/components/PublicNavbar'
 
 export default function Landing() {
   return (
@@ -9,27 +10,7 @@ export default function Landing() {
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-100/20 to-transparent"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent_50%)]"></div>
       </div>
-      {/* Header */}
-      <header className="bg-white/90 backdrop-blur-md shadow-lg border-b border-blue-200 relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-xl mr-3 shadow-lg">
-                <Truck className="h-8 w-8 text-white" />
-              </div>
-              <span className="text-2xl font-bold">
-                <span className="text-blue-800">Logi</span><span className="text-teal-600">Keto</span>
-              </span>
-            </div>
-            <Link 
-              to="/login" 
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium px-6 py-2 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
-            >
-              Login
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicNavbar />
 
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-10">
