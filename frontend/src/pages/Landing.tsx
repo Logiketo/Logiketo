@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { Truck, Package, Users, FileText, BarChart3, MapPin } from 'lucide-react'
 import PublicNavbar from '@/components/PublicNavbar'
 
