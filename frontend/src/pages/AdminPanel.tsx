@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Users, AlertCircle, UserPlus, Pencil, Trash2, UserCheck, UserX, History, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -12,7 +12,6 @@ interface LoginSession {
   userId: string
   ipAddress: string | null
   userAgent: string | null
-  location: string | null
   createdAt: string
   user: { email: string; firstName: string; lastName: string }
 }
@@ -137,6 +136,7 @@ export default function AdminPanel() {
   })
 
   const [contentForm, setContentForm] = useState<Record<string, string>>({})
+  const contentFormInitialized = useRef(false)
 
   const contentDefaults = {
     motivation_quote: 'When the why is clear, the how is easy',
@@ -147,8 +147,15 @@ export default function AdminPanel() {
     about_p4: ''
   }
 
+  // Reset init flag when leaving Site Content tab
   useEffect(() => {
-    if (mainTab === 'site-content') {
+    if (mainTab !== 'site-content') contentFormInitialized.current = false
+  }, [mainTab])
+
+  // Populate form only once when switching to Site Content and data has loaded (prevents refetch from overwriting user edits)
+  useEffect(() => {
+    if (mainTab === 'site-content' && !loadingContent && !contentFormInitialized.current) {
+      contentFormInitialized.current = true
       setContentForm({
         motivation_quote: siteContent.motivation_quote ?? contentDefaults.motivation_quote,
         about_intro: siteContent.about_intro ?? contentDefaults.about_intro,
@@ -158,7 +165,7 @@ export default function AdminPanel() {
         about_p4: siteContent.about_p4 ?? contentDefaults.about_p4
       })
     }
-  }, [mainTab, siteContent])
+  }, [mainTab, loadingContent, siteContent])
 
   const filteredUsers = useMemo(() => {
     const now = new Date()
@@ -354,7 +361,6 @@ export default function AdminPanel() {
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">User</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">When</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Location</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">IP Address</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Device/Browser</th>
                   </tr>
@@ -366,7 +372,6 @@ export default function AdminPanel() {
                         {s.user?.firstName} {s.user?.lastName} ({s.user?.email})
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{formatDate(s.createdAt)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{s.location || '—'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 font-mono">{s.ipAddress || '—'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate" title={s.userAgent || ''}>{s.userAgent || '—'}</td>
                     </tr>
