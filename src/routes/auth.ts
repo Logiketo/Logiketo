@@ -158,6 +158,18 @@ router.post('/login', async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as SignOptions
     )
 
+    // Record login session (when and from where)
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress || null
+    const userAgent = req.headers['user-agent'] || null
+    try {
+      await prisma.$executeRaw`
+        INSERT INTO login_sessions (id, "userId", "ipAddress", "userAgent", "createdAt")
+        VALUES (gen_random_uuid()::text, ${user.id}, ${ipAddress}, ${userAgent}, CURRENT_TIMESTAMP)
+      `
+    } catch (err) {
+      console.error('Login session recording failed:', err)
+    }
+
     // Return user data (without password)
     const { password, ...userWithoutPassword } = user
 
@@ -477,6 +489,32 @@ router.delete('/delete-user/:userId', authenticate, authorize('ADMIN'), async (r
     })
   } catch (error) {
     console.error('Delete user error:', error)
+    return res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+// Get login history (admin only)
+router.get('/login-history', authenticate, authorize('ADMIN'), async (req: AuthRequest, res) => {
+  try {
+    const sessions = await prisma.$queryRaw`
+      SELECT ls.id, ls."userId", ls."ipAddress", ls."userAgent", ls."createdAt",
+             u.email, u."firstName", u."lastName"
+      FROM login_sessions ls
+      JOIN users u ON u.id = ls."userId"
+      ORDER BY ls."createdAt" DESC
+      LIMIT 500
+    `
+    const data = (sessions as any[]).map((s) => ({
+      id: s.id,
+      userId: s.userId,
+      ipAddress: s.ipAddress,
+      userAgent: s.userAgent,
+      createdAt: s.createdAt,
+      user: { email: s.email, firstName: s.firstName, lastName: s.lastName }
+    }))
+    return res.json({ success: true, data })
+  } catch (error) {
+    console.error('Login history error:', error)
     return res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })
