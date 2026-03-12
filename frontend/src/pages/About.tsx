@@ -26,6 +26,12 @@ export default function About() {
           <p className="text-lg text-gray-600 leading-relaxed">
             We streamline logistics with load management, dispatch tools, interactive maps, fleet management, and actionable reports. Our platform helps you add and save loads, assign drivers, track deliveries, and optimize your operations—all in one place.
           </p>
+          <p className="text-lg text-gray-600 leading-relaxed mt-6">
+            Logiketo was created by an experienced team with real hands-on knowledge of the dispatching and logistics industry. After years of working in the field, we saw the same challenges come up again and again—too many disconnected tools, too much manual work, scattered information, and unnecessary day-to-day chaos. Logiketo was built to solve those problems with a practical platform designed around real operational needs.
+          </p>
+          <p className="text-lg text-gray-600 leading-relaxed mt-6">
+            Our goal was to bring the most important parts of a logistics business into one clear, easy-to-use system. Whether you are managing a small team or a growing fleet, Logiketo is designed to save time, keep operations organized, and help teams make faster, smarter decisions.
+          </p>
 
           {/* Bottom CTAs */}
           <div className="mt-16 flex flex-col sm:flex-row gap-4 justify-center items-center">
