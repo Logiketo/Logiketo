@@ -41,6 +41,23 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required')
 })
 
+// Get approximate location from IP using free ip-api.com (no key required)
+async function getLocationFromIp(ip: string | null): Promise<string | null> {
+  if (!ip || ip === '::1' || ip === '127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.')) return null
+  try {
+    const ctrl = new AbortController()
+    const t = setTimeout(() => ctrl.abort(), 2500)
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,city,regionName,country`, { signal: ctrl.signal })
+    clearTimeout(t)
+    const data = await res.json()
+    if (data?.status === 'success') {
+      const parts = [data.city, data.regionName, data.country].filter(Boolean)
+      return parts.length ? parts.join(', ') : null
+    }
+  } catch { /* ignore */ }
+  return null
+}
+
 // Register new user
 router.post('/register', async (req, res) => {
   try {
@@ -158,13 +175,14 @@ router.post('/login', async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as SignOptions
     )
 
-    // Record login session (when and from where)
+    // Record login session (when, from where, approximate location)
     const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress || null
     const userAgent = req.headers['user-agent'] || null
+    const location = await getLocationFromIp(ipAddress)
     try {
       await prisma.$executeRaw`
-        INSERT INTO login_sessions (id, "userId", "ipAddress", "userAgent", "createdAt")
-        VALUES (gen_random_uuid()::text, ${user.id}, ${ipAddress}, ${userAgent}, CURRENT_TIMESTAMP)
+        INSERT INTO login_sessions (id, "userId", "ipAddress", "userAgent", location, "createdAt")
+        VALUES (gen_random_uuid()::text, ${user.id}, ${ipAddress}, ${userAgent}, ${location}, CURRENT_TIMESTAMP)
       `
     } catch (err) {
       console.error('Login session recording failed:', err)
@@ -497,7 +515,7 @@ router.delete('/delete-user/:userId', authenticate, authorize('ADMIN'), async (r
 router.get('/login-history', authenticate, authorize('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const sessions = await prisma.$queryRaw`
-      SELECT ls.id, ls."userId", ls."ipAddress", ls."userAgent", ls."createdAt",
+      SELECT ls.id, ls."userId", ls."ipAddress", ls."userAgent", ls.location, ls."createdAt",
              u.email, u."firstName", u."lastName"
       FROM login_sessions ls
       JOIN users u ON u.id = ls."userId"
@@ -509,6 +527,7 @@ router.get('/login-history', authenticate, authorize('ADMIN'), async (req: AuthR
       userId: s.userId,
       ipAddress: s.ipAddress,
       userAgent: s.userAgent,
+      location: s.location,
       createdAt: s.createdAt,
       user: { email: s.email, firstName: s.firstName, lastName: s.lastName }
     }))

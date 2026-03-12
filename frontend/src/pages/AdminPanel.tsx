@@ -12,6 +12,7 @@ interface LoginSession {
   userId: string
   ipAddress: string | null
   userAgent: string | null
+  location: string | null
   createdAt: string
   user: { email: string; firstName: string; lastName: string }
 }
@@ -353,6 +354,7 @@ export default function AdminPanel() {
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">User</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">When</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Location</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">IP Address</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Device/Browser</th>
                   </tr>
@@ -364,6 +366,7 @@ export default function AdminPanel() {
                         {s.user?.firstName} {s.user?.lastName} ({s.user?.email})
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{formatDate(s.createdAt)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{s.location || '—'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 font-mono">{s.ipAddress || '—'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate" title={s.userAgent || ''}>{s.userAgent || '—'}</td>
                     </tr>
