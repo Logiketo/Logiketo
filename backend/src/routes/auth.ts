@@ -168,9 +168,14 @@ router.post('/login', loginLimiter, async (req, res) => {
     // Record login session (when and from where)
     const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress || null
     const userAgent = req.headers['user-agent'] || null
-    await prisma.loginSession.create({
-      data: { userId: user.id, ipAddress: ipAddress || undefined, userAgent: userAgent || undefined }
-    }).catch(() => {}) // Don't fail login if session recording fails
+    try {
+      await prisma.$executeRaw`
+        INSERT INTO login_sessions (id, "userId", "ipAddress", "userAgent", "createdAt")
+        VALUES (gen_random_uuid()::text, ${user.id}, ${ipAddress || null}, ${userAgent || null}, CURRENT_TIMESTAMP)
+      `
+    } catch (err) {
+      console.error('Login session recording failed:', err)
+    }
 
     // Return user data (without password)
     const { password, ...userWithoutPassword } = user
